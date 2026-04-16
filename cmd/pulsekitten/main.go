@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	serverAddr = flag.String("server", "localhost:50051", "PulseCat server address (host:port)")
+	serverAddr = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
 	startDelay = flag.Uint("delay", 0, "Start delay in seconds (M parameter)")
 	frequency  = flag.Uint("frequency", 1, "Frequency in seconds between snapshots (N parameter)")
 	statTypes  = flag.String("stats", "", "Comma-separated list of stat types to filter (load,cpu,disk,network,talkers,sockets,tcp)")
@@ -137,7 +137,7 @@ func runClient(ctx context.Context) error {
 	}
 	defer conn.Close()
 
-	client := v1.NewSystemMonitorClient(conn)
+	client := v1.NewPulseCatClient(conn)
 
 	// Create subscription request
 	req := &v1.SubscribeRequest{

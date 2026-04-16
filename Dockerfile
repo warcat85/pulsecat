@@ -38,10 +38,9 @@ COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 # Copy binary from builder
 COPY --from=builder /app/pulsecat /pulsecat
-COPY --from=builder /app/config.yaml /config.yaml
 
 # Expose gRPC port
-EXPOSE 50051
+EXPOSE 25225
 
 # Health check disabled in scratch (no shell)
 # For production, use external health checks or a different base image
@@ -50,7 +49,7 @@ EXPOSE 50051
 ENTRYPOINT ["/pulsecat"]
 
 # Default command (can be overridden)
-CMD ["--config", "/config.yaml"]
+CMD ["--config", "configs/config.yaml"]
 
 # Notes for running this container:
 # 1. For full system monitoring capabilities, run with:
@@ -62,12 +61,12 @@ CMD ["--config", "/config.yaml"]
 #
 # 2. Example docker run command:
 #    docker run -d \
-#      --name system-monitor \
+#      --name pulsecat \
 #      --privileged \
 #      -v /proc:/host/proc:ro \
 #      -v /sys:/host/sys:ro \
-#      -p 50051:50051 \
-#      system-monitor-daemon:latest
+#      -p 25225:25225 \
+#      pulsecat:latest
 #
 # 3. Since we're using scratch, the container has no shell or utilities.
 #    This is more secure but may require host mounts for system monitoring.

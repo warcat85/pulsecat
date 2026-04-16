@@ -184,7 +184,7 @@ docker-build:
 
 .PHONY: docker-run
 docker-run:
-	docker run -p 50051:50051 --rm $(BINARY_NAME):latest
+	docker run -p 25225:25225 --rm $(BINARY_NAME):latest
 
 .PHONY: docker-clean
 docker-clean:

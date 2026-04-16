@@ -47,16 +47,16 @@ type MonitorsConfig struct {
 	TCPConnectionStates bool `yaml:"tcp_connection_states"`
 }
 
-// server implements the SystemMonitorServer interface
+// server implements the PulseCatServer interface
 type server struct {
-	v1.UnimplementedSystemMonitorServer
+	v1.UnimplementedPulseCatServer
 	config *Config
 	mu     sync.RWMutex
 	stats  *v1.SystemStats
 }
 
 // Subscribe implements the gRPC streaming endpoint
-func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.SystemMonitor_SubscribeServer) error {
+func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_SubscribeServer) error {
 	ctx := stream.Context()
 
 	// Use request parameters or fall back to server defaults
@@ -125,6 +125,75 @@ func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.SystemMonitor_Sub
 			return ctx.Err()
 		}
 	}
+}
+
+// Meow implements the ping-like endpoint that responds with "Meow!" after a delay
+func (s *server) Meow(req *v1.MeowRequest, stream v1.PulseCat_MeowServer) error {
+	ctx := stream.Context()
+
+	// Get parameters from request
+	startDelay := int(req.StartDelay)
+	frequency := int(req.Frequency)
+
+	log.Printf("Meow request: start_delay=%ds, frequency=%ds", startDelay, frequency)
+
+	// Wait for initial delay
+	if startDelay > 0 {
+		log.Printf("Waiting %d seconds before first meow", startDelay)
+		select {
+		case <-time.After(time.Duration(startDelay) * time.Second):
+			log.Printf("Initial delay completed, sending meow")
+		case <-ctx.Done():
+			log.Printf("Meow request cancelled during initial delay")
+			return ctx.Err()
+		}
+	}
+
+	// Send first meow response
+	response := &v1.MeowResponse{
+		Message:   "Meow!",
+		Timestamp: time.Now().Unix(),
+	}
+
+	if err := stream.Send(response); err != nil {
+		log.Printf("Failed to send meow response: %v", err)
+		return err
+	}
+
+	log.Printf("Sent meow response")
+
+	// If frequency is specified and > 0, continue sending responses periodically
+	if frequency > 0 {
+		ticker := time.NewTicker(time.Duration(frequency) * time.Second)
+		defer ticker.Stop()
+
+		meowCount := 1
+		for {
+			select {
+			case <-ticker.C:
+				meowCount++
+				response := &v1.MeowResponse{
+					Message:   "Meow!",
+					Timestamp: time.Now().Unix(),
+				}
+
+				if err := stream.Send(response); err != nil {
+					log.Printf("Failed to send meow response #%d: %v", meowCount, err)
+					return err
+				}
+
+				log.Printf("Sent meow response #%d", meowCount)
+
+			case <-ctx.Done():
+				log.Printf("Meow stream ended after %d responses", meowCount)
+				return ctx.Err()
+			}
+		}
+	}
+
+	// Single response mode
+	log.Printf("Meow request completed (single response)")
+	return nil
 }
 
 // filterStats filters system statistics based on requested stat types
@@ -284,7 +353,7 @@ func NewDaemon(config *Config) *Daemon {
 
 // Run starts the daemon
 func (d *Daemon) Run() error {
-	log.Printf("Starting system monitor daemon")
+	log.Printf("Starting PulseCat daemon")
 
 	// Format monitor status
 	monitorStatus := []string{}
@@ -316,7 +385,7 @@ func (d *Daemon) Run() error {
 
 	// Create gRPC server
 	d.grpcServer = grpc.NewServer()
-	v1.RegisterSystemMonitorServer(d.grpcServer, d.server)
+	v1.RegisterPulseCatServer(d.grpcServer, d.server)
 
 	// Start TCP listener
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", d.config.Port))
@@ -369,7 +438,7 @@ func (d *Daemon) Stop() {
 func main() {
 	// Set up logging
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
-	log.Printf("Starting system monitor daemon v%s (build: %s, commit: %s)",
+	log.Printf("Starting PulseCat daemon v%s (build: %s, commit: %s)",
 		Version, BuildTime, CommitHash)
 
 	// Parse command-line arguments
@@ -434,7 +503,7 @@ func main() {
 		config.Frequency = 5
 	}
 	if config.Port == 0 {
-		config.Port = 50051
+		config.Port = 25225
 	}
 	if config.LogLevel == "" {
 		config.LogLevel = "info"
@@ -595,7 +664,7 @@ func loadConfigFromYAML(filename string) (*Config, error) {
 		config.Frequency = 5
 	}
 	if config.Port == 0 {
-		config.Port = 50051
+		config.Port = 25225
 	}
 	if config.LogLevel == "" {
 		config.LogLevel = "info"

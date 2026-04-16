@@ -4,7 +4,7 @@
 # Server configuration
 server:
   # Port for gRPC server (1-65535)
-  port: 50051
+  port: 25225
   
   # Initial delay in seconds before first snapshot (M)
   start_delay: 15

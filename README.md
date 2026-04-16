@@ -109,11 +109,11 @@ go build -o pulsekitten ./cmd/pulsekitten
 
 Запустите клиент с указанием адреса сервера:
 ```bash
-./pulsekitten -server localhost:50051 -frequency 5 -stats load,cpu,disk
+./pulsekitten -server localhost:25225 -frequency 5 -stats load,cpu,disk
 ```
 
 Доступные параметры:
-- `-server`: адрес сервера PulseCat (по умолчанию localhost:50051)
+- `-server`: адрес сервера PulseCat (по умолчанию localhost:25225)
 - `-delay`: начальная задержка в секундах (M параметр)
 - `-frequency`: частота снимков в секундах (N параметр)
 - `-stats`: фильтр типов статистики (load,cpu,disk,network,talkers,sockets,tcp)
@@ -165,58 +165,64 @@ docker build -t pulsecat:latest .
 For basic operation (limited monitoring capabilities):
 ```bash
 docker run -d \
-  --name system-monitor \
-  -p 50051:50051 \
+  --name pulsecat \
+  -p 25225:25225 \
   pulsecat:latest
 ```
 
 For full system monitoring capabilities (recommended):
 ```bash
 docker run -d \
-  --name system-monitor \
+  --name pulsecat \
   --privileged \
   --network host \
   -v /proc:/host/proc:ro \
   -v /sys:/host/sys:ro \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v $(pwd)/config.yaml:/config.yaml:ro \
+  -v $(pwd)/configs/config.yaml:/configs/config.yaml:ro \
   pulsecat:latest \
-  --config /config.yaml
+  --config configs/config.yaml
 ```
 
 ### Using Docker Compose
 
-A `docker-compose.yml` file is provided for easier deployment:
+A `compose.yaml` file is provided for easier deployment:
 
 ```bash
 # Start the service
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop the service
-docker-compose down
+docker compose down
 ```
 
 ### Configuration
 
-The Docker image includes a default `config.yaml` file. You can override it by mounting your own configuration:
+The Docker image does not include a configuration file by default. The `compose.yaml` mounts `./configs/config.yaml` from the host into the container. If you don't have a configuration file, copy the example:
+
+```bash
+cp configs/config.yaml.example configs/config.yaml
+```
+
+You can customize the configuration by editing `configs/config.yaml`. To override with your own configuration file, modify the volume mount in `compose.yaml` or use a custom Docker run command:
 
 ```bash
 docker run -d \
-  --name system-monitor \
-  -v /path/to/your/config.yaml:/config.yaml:ro \
+  --name pulsecat \
+  -v /path/to/your/config.yaml:/configs/config.yaml:ro \
   pulsecat:latest \
-  --config /config.yaml
+  --config configs/config.yaml
 ```
 
 ### Notes
 
 1. **Privileged Mode**: System monitoring requires access to host system information. Running with `--privileged` and mounting `/proc` and `/sys` is necessary for full functionality.
 
-2. **Network Mode**: Using `--network host` provides accurate network statistics. If port mapping is preferred, use `-p 50051:50051` instead.
+2. **Network Mode**: Using `--network host` provides accurate network statistics. If port mapping is preferred, use `-p 25225:25225` instead.
 
-3. **Health Checks**: The container includes a health check that verifies the gRPC server is listening on port 50051.
+3. **Health Checks**: The container includes a health check that verifies the gRPC server is listening on port 25225.
 
 4. **Security**: For production deployments, consider using more restrictive capabilities instead of full privileged mode, and run as a non-root user when possible.

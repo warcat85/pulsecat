@@ -4,12 +4,16 @@ package pulsecat.v1;
 
 option go_package = "pulsecat/api/v1";
 
-// SystemMonitor service provides real-time system monitoring statistics
-service SystemMonitor {
+// PulseCat service provides real-time system monitoring statistics
+service PulseCat {
   // Subscribe to system statistics stream
   // Client specifies M (start_delay) and N (frequency) parameters
   // Server streams SystemStats messages periodically
   rpc Subscribe(SubscribeRequest) returns (stream SystemStats) {}
+  
+  // Meow is a ping-like endpoint that responds with "Meow!" after a delay
+  // If frequency is specified, responses are streamed periodically
+  rpc Meow(MeowRequest) returns (stream MeowResponse) {}
 }
 
 // SubscribeRequest contains subscription parameters
@@ -22,6 +26,24 @@ message SubscribeRequest {
   
   // Optional: Filter for specific statistics
   repeated StatType stat_types = 3;
+}
+
+// MeowRequest is a ping-like request with delay and optional frequency
+message MeowRequest {
+  // Initial delay in seconds before first response
+  uint32 start_delay = 1;
+  
+  // Optional frequency in seconds between responses (0 = single response)
+  uint32 frequency = 2;
+}
+
+// MeowResponse contains the meow message
+message MeowResponse {
+  // The meow message
+  string message = 1;
+  
+  // Timestamp when the response was sent
+  int64 timestamp = 2;
 }
 
 // SystemStats contains comprehensive system statistics

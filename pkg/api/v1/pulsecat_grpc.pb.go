@@ -19,32 +19,36 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SystemMonitor_Subscribe_FullMethodName = "/pulsecat.v1.SystemMonitor/Subscribe"
+	PulseCat_Subscribe_FullMethodName = "/pulsecat.v1.PulseCat/Subscribe"
+	PulseCat_Meow_FullMethodName      = "/pulsecat.v1.PulseCat/Meow"
 )
 
-// SystemMonitorClient is the client API for SystemMonitor service.
+// PulseCatClient is the client API for PulseCat service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// SystemMonitor service provides real-time system monitoring statistics
-type SystemMonitorClient interface {
+// PulseCat service provides real-time system monitoring statistics
+type PulseCatClient interface {
 	// Subscribe to system statistics stream
 	// Client specifies M (start_delay) and N (frequency) parameters
 	// Server streams SystemStats messages periodically
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SystemStats], error)
+	// Meow is a ping-like endpoint that responds with "Meow!" after a delay
+	// If frequency is specified, responses are streamed periodically
+	Meow(ctx context.Context, in *MeowRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MeowResponse], error)
 }
 
-type systemMonitorClient struct {
+type pulseCatClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewSystemMonitorClient(cc grpc.ClientConnInterface) SystemMonitorClient {
-	return &systemMonitorClient{cc}
+func NewPulseCatClient(cc grpc.ClientConnInterface) PulseCatClient {
+	return &pulseCatClient{cc}
 }
 
-func (c *systemMonitorClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SystemStats], error) {
+func (c *pulseCatClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SystemStats], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SystemMonitor_ServiceDesc.Streams[0], SystemMonitor_Subscribe_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &PulseCat_ServiceDesc.Streams[0], PulseCat_Subscribe_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -59,74 +63,115 @@ func (c *systemMonitorClient) Subscribe(ctx context.Context, in *SubscribeReques
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SystemMonitor_SubscribeClient = grpc.ServerStreamingClient[SystemStats]
+type PulseCat_SubscribeClient = grpc.ServerStreamingClient[SystemStats]
 
-// SystemMonitorServer is the server API for SystemMonitor service.
-// All implementations must embed UnimplementedSystemMonitorServer
+func (c *pulseCatClient) Meow(ctx context.Context, in *MeowRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MeowResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &PulseCat_ServiceDesc.Streams[1], PulseCat_Meow_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[MeowRequest, MeowResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PulseCat_MeowClient = grpc.ServerStreamingClient[MeowResponse]
+
+// PulseCatServer is the server API for PulseCat service.
+// All implementations must embed UnimplementedPulseCatServer
 // for forward compatibility.
 //
-// SystemMonitor service provides real-time system monitoring statistics
-type SystemMonitorServer interface {
+// PulseCat service provides real-time system monitoring statistics
+type PulseCatServer interface {
 	// Subscribe to system statistics stream
 	// Client specifies M (start_delay) and N (frequency) parameters
 	// Server streams SystemStats messages periodically
 	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SystemStats]) error
-	mustEmbedUnimplementedSystemMonitorServer()
+	// Meow is a ping-like endpoint that responds with "Meow!" after a delay
+	// If frequency is specified, responses are streamed periodically
+	Meow(*MeowRequest, grpc.ServerStreamingServer[MeowResponse]) error
+	mustEmbedUnimplementedPulseCatServer()
 }
 
-// UnimplementedSystemMonitorServer must be embedded to have
+// UnimplementedPulseCatServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedSystemMonitorServer struct{}
+type UnimplementedPulseCatServer struct{}
 
-func (UnimplementedSystemMonitorServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SystemStats]) error {
+func (UnimplementedPulseCatServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SystemStats]) error {
 	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedSystemMonitorServer) mustEmbedUnimplementedSystemMonitorServer() {}
-func (UnimplementedSystemMonitorServer) testEmbeddedByValue()                       {}
+func (UnimplementedPulseCatServer) Meow(*MeowRequest, grpc.ServerStreamingServer[MeowResponse]) error {
+	return status.Error(codes.Unimplemented, "method Meow not implemented")
+}
+func (UnimplementedPulseCatServer) mustEmbedUnimplementedPulseCatServer() {}
+func (UnimplementedPulseCatServer) testEmbeddedByValue()                  {}
 
-// UnsafeSystemMonitorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SystemMonitorServer will
+// UnsafePulseCatServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PulseCatServer will
 // result in compilation errors.
-type UnsafeSystemMonitorServer interface {
-	mustEmbedUnimplementedSystemMonitorServer()
+type UnsafePulseCatServer interface {
+	mustEmbedUnimplementedPulseCatServer()
 }
 
-func RegisterSystemMonitorServer(s grpc.ServiceRegistrar, srv SystemMonitorServer) {
-	// If the following call panics, it indicates UnimplementedSystemMonitorServer was
+func RegisterPulseCatServer(s grpc.ServiceRegistrar, srv PulseCatServer) {
+	// If the following call panics, it indicates UnimplementedPulseCatServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&SystemMonitor_ServiceDesc, srv)
+	s.RegisterService(&PulseCat_ServiceDesc, srv)
 }
 
-func _SystemMonitor_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _PulseCat_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SubscribeRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(SystemMonitorServer).Subscribe(m, &grpc.GenericServerStream[SubscribeRequest, SystemStats]{ServerStream: stream})
+	return srv.(PulseCatServer).Subscribe(m, &grpc.GenericServerStream[SubscribeRequest, SystemStats]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SystemMonitor_SubscribeServer = grpc.ServerStreamingServer[SystemStats]
+type PulseCat_SubscribeServer = grpc.ServerStreamingServer[SystemStats]
 
-// SystemMonitor_ServiceDesc is the grpc.ServiceDesc for SystemMonitor service.
+func _PulseCat_Meow_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MeowRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(PulseCatServer).Meow(m, &grpc.GenericServerStream[MeowRequest, MeowResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PulseCat_MeowServer = grpc.ServerStreamingServer[MeowResponse]
+
+// PulseCat_ServiceDesc is the grpc.ServiceDesc for PulseCat service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var SystemMonitor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulsecat.v1.SystemMonitor",
-	HandlerType: (*SystemMonitorServer)(nil),
+var PulseCat_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "pulsecat.v1.PulseCat",
+	HandlerType: (*PulseCatServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Subscribe",
-			Handler:       _SystemMonitor_Subscribe_Handler,
+			Handler:       _PulseCat_Subscribe_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Meow",
+			Handler:       _PulseCat_Meow_Handler,
 			ServerStreams: true,
 		},
 	},
