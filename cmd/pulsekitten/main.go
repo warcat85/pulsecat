@@ -23,6 +23,7 @@ var (
 	startDelay = flag.Uint("delay", 0, "Start delay in seconds (M parameter)")
 	frequency  = flag.Uint("frequency", 1, "Frequency in seconds between snapshots (N parameter)")
 	statTypes  = flag.String("stats", "", "Comma-separated list of stat types to filter (load,cpu,disk,network,talkers,sockets,tcp)")
+	meow       = flag.Bool("meow", false, "Send meow request instead of subscribing to stats (cannot be used with -stats)")
 	duration   = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
 	verbose    = flag.Bool("verbose", false, "Enable verbose output")
 	version    = flag.Bool("version", false, "Print version and exit")
@@ -67,58 +68,44 @@ func parseStatTypes(input string) []v1.StatType {
 
 func printStats(stats *v1.SystemStats) {
 	fmt.Printf("\n=== System Stats at %s ===\n", time.Unix(stats.Timestamp, 0).Format(time.RFC3339))
-
 	if stats.LoadAverage != nil {
 		la := stats.LoadAverage
 		fmt.Printf("Load Average: 1m=%.2f, 5m=%.2f, 15m=%.2f\n", la.OneMin, la.FiveMin, la.FifteenMin)
 	}
-
 	if stats.CpuUsage != nil {
 		cpu := stats.CpuUsage
 		fmt.Printf("CPU Usage: User=%.1f%%, System=%.1f%%, Idle=%.1f%%, Nice=%.1f%%, IOWait=%.1f%%\n",
 			cpu.User, cpu.System, cpu.Idle, cpu.Nice, cpu.Iowait)
 	}
-
 	if len(stats.DiskUsage) > 0 {
 		fmt.Printf("Disk Usage (%d filesystems):\n", len(stats.DiskUsage))
-		for i, du := range stats.DiskUsage {
-			if i >= 3 && !*verbose { // Limit output unless verbose
-				fmt.Printf("  ... and %d more\n", len(stats.DiskUsage)-i)
-				break
-			}
+		for _, du := range stats.DiskUsage {
 			fmt.Printf("  %s: %.1f%% used (%d MB used / %d MB total)\n",
 				du.MountPoint, du.UsedPercent, du.UsedMb, du.TotalMb)
 		}
 	}
-
 	if stats.NetworkStats != nil {
-		net := stats.NetworkStats
-		fmt.Printf("Network: RX=%d bytes, TX=%d bytes\n", net.TotalBytesReceived, net.TotalBytesSent)
+		ns := stats.NetworkStats
+		fmt.Printf("Network: RX=%d bytes, TX=%d bytes\n", ns.TotalBytesReceived, ns.TotalBytesSent)
 	}
-
 	if len(stats.TopTalkers) > 0 {
 		fmt.Printf("Top Talkers (%d):\n", len(stats.TopTalkers))
 		for i, tt := range stats.TopTalkers {
-			if i >= 3 && !*verbose {
-				fmt.Printf("  ... and %d more\n", len(stats.TopTalkers)-i)
+			if i >= 3 {
 				break
 			}
-			fmt.Printf("  %.1f%% at %d bytes/sec\n", tt.Percentage, tt.BytesPerSecond)
+			fmt.Printf("  %d. %.0f bps (%.1f%%)\n", i+1, tt.BytesPerSecond, tt.Percentage)
 		}
 	}
-
 	if len(stats.ListeningSockets) > 0 {
 		fmt.Printf("Listening Sockets (%d):\n", len(stats.ListeningSockets))
 		for i, ls := range stats.ListeningSockets {
-			if i >= 3 && !*verbose {
-				fmt.Printf("  ... and %d more\n", len(stats.ListeningSockets)-i)
+			if i >= 3 {
 				break
 			}
-			fmt.Printf("  %s:%d (%s) - %s (PID %d)\n",
-				ls.Address, ls.Port, ls.Protocol, ls.Command, ls.Pid)
+			fmt.Printf("  %d. %s:%d (%s)\n", i+1, ls.Address, ls.Port, ls.Protocol)
 		}
 	}
-
 	if stats.TcpConnectionStates != nil {
 		tcp := stats.TcpConnectionStates
 		fmt.Printf("TCP Connections: ESTABLISHED=%d, LISTEN=%d, TIME_WAIT=%d\n",
@@ -126,18 +113,9 @@ func printStats(stats *v1.SystemStats) {
 	}
 }
 
-func runClient(ctx context.Context) error {
+func runStatsSubscription(ctx context.Context, client v1.PulseCatClient) error {
 	// Parse stat types
 	stats := parseStatTypes(*statTypes)
-
-	// Set up connection
-	conn, err := grpc.NewClient(*serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return fmt.Errorf("failed to connect to server: %v", err)
-	}
-	defer conn.Close()
-
-	client := v1.NewPulseCatClient(conn)
 
 	// Create subscription request
 	req := &v1.SubscribeRequest{
@@ -205,6 +183,99 @@ func runClient(ctx context.Context) error {
 	}
 }
 
+func runMeowRequest(ctx context.Context, client v1.PulseCatClient) error {
+	// Create meow request
+	req := &v1.MeowRequest{
+		StartDelay: uint32(*startDelay),
+		Frequency:  uint32(*frequency),
+	}
+
+	if *verbose {
+		log.Printf("Connecting to %s", *serverAddr)
+		log.Printf("Meow request: delay=%ds, frequency=%ds", req.StartDelay, req.Frequency)
+	}
+
+	// Start meow stream
+	stream, err := client.Meow(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to send meow request: %v", err)
+	}
+
+	log.Printf("Sent meow request. Waiting for responses...")
+	if *duration > 0 {
+		log.Printf("Will run for %d seconds", *duration)
+	}
+
+	// Handle graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	// Set up duration timer if specified
+	var durationTimer *time.Timer
+	if *duration > 0 {
+		durationTimer = time.NewTimer(time.Duration(*duration) * time.Second)
+		defer durationTimer.Stop()
+	}
+
+	meowCount := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-sigCh:
+			log.Printf("Interrupt received, shutting down...")
+			return nil
+		case <-durationTimer.C:
+			log.Printf("Duration reached, shutting down...")
+			return nil
+		default:
+			// Receive next meow response
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				log.Printf("Server closed meow stream")
+				return nil
+			}
+			if err != nil {
+				return fmt.Errorf("error receiving meow response: %v", err)
+			}
+
+			meowCount++
+			fmt.Printf("Meow #%d at %s: %s\n",
+				meowCount,
+				time.Unix(resp.Timestamp, 0).Format(time.RFC3339),
+				resp.Message)
+
+			if *verbose {
+				log.Printf("Received meow response #%d", meowCount)
+			}
+		}
+	}
+}
+
+func runClient(ctx context.Context) error {
+	// Validate that --meow and --stats are not used together
+	if *meow && *statTypes != "" {
+		return fmt.Errorf("--meow cannot be used together with --stats")
+	}
+
+	// Set up connection
+	conn, err := grpc.NewClient(*serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return fmt.Errorf("failed to connect to server: %v", err)
+	}
+	defer conn.Close()
+
+	client := v1.NewPulseCatClient(conn)
+
+	if *meow {
+		// Handle meow request
+		return runMeowRequest(ctx, client)
+	} else {
+		// Handle regular stats subscription
+		return runStatsSubscription(ctx, client)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -219,6 +290,4 @@ func main() {
 	if err := runClient(ctx); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
-
-	log.Printf("PulseKitten client finished")
 }

@@ -117,6 +117,7 @@ go build -o pulsekitten ./cmd/pulsekitten
 - `-delay`: начальная задержка в секундах (M параметр)
 - `-frequency`: частота снимков в секундах (N параметр)
 - `-stats`: фильтр типов статистики (load,cpu,disk,network,talkers,sockets,tcp)
+- `-meow`: отправить meow-запрос вместо подписки на статистику (нельзя использовать вместе с -stats)
 - `-duration`: продолжительность работы в секундах (0 = бесконечно)
 - `-verbose`: подробный вывод
 - `-version`: показать версию
@@ -129,6 +130,18 @@ CPU Usage: User=13.5%, System=8.2%, Idle=71.3%, Nice=0.0%, IOWait=0.0%
 Disk Usage (1 filesystems):
   /: 50.3% used (51243 MB used / 102400 MB total)
 Network: RX=1043000 bytes, TX=543000 bytes
+```
+
+Пример использования meow-запроса:
+```bash
+./pulsekitten -server localhost:25225 --meow -delay 2 -frequency 3
+```
+
+Вывод meow-запроса:
+```
+Meow #1 at 2026-04-16T15:35:12+03:00: Meow!
+Meow #2 at 2026-04-16T15:35:15+03:00: Meow!
+Meow #3 at 2026-04-16T15:35:18+03:00: Meow!
 ```
 
 ## Разбалловка
