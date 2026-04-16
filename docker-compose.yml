@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  pulsecat:
+    build: .
+    image: pulsecat:latest
+    container_name: pulsecat
+    restart: unless-stopped
+    # Run with privileged mode to access system information
+    privileged: true
+    # Use host network for accurate network monitoring
+    network_mode: host
+    # Mount host system directories for monitoring
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config.yaml:/config.yaml:ro
+    # Environment variables can override config
+    environment:
+      - LOG_LEVEL=info
+    # Health check (if using Alpine base with netcat)
+    # healthcheck:
+    #   test: ["CMD", "nc", "-z", "localhost", "50051"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 15s
+    ports:
+      # Map port if not using host network
+      - "50051:50051"
+    command: ["--config", "/config.yaml"]
+    # For production, consider adding resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 256M
+
+  # Optional: Add a Prometheus exporter or visualization service
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #   depends_on:
+  #     - system-monitor-daemon
+
+  # Optional: Add Grafana for visualization
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   depends_on:
+  #     - prometheus
+
+# Optional volume for Grafana data persistence
+# volumes:
+#   grafana-data:

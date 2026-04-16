@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Verify Go version
+      run: |
+        echo "Using Go version:"
+        go version
+        # Ensure Go version is at least 1.24
+        GO_VERSION=$(go version | grep -o 'go[0-9]\+\.[0-9]\+' | cut -c3-)
+        MAJOR=$(echo $GO_VERSION | cut -d. -f1)
+        MINOR=$(echo $GO_VERSION | cut -d. -f2)
+        if [ $MAJOR -lt 1 ] || ([ $MAJOR -eq 1 ] && [ $MINOR -lt 24 ]); then
+          echo "Error: Go version must be >= 1.24 (found $GO_VERSION)"
+          exit 1
+        fi
+        echo "Go version $GO_VERSION meets requirement (>= 1.24)"
+
+    - name: Download dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Run latest golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        args: --config .golangci.yml --timeout=5m
+
+    - name: Run all unit tests with race detection
+      run: |
+        echo "Running unit tests with race detection and count=100..."
+        go test -race -count=100 ./...
+      env:
+        GOFLAGS: "-v"
+
+    - name: Run go vet
+      run: go vet ./...
+
+  build:
+    name: Build Binary
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Build binaries
+      run: |
+        echo "Building binaries with Go 1.24..."
+        # Build server binary
+        go build -v -ldflags "-X main.Version=ci -X main.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S') -X main.CommitHash=${GITHUB_SHA::8}" -o pulsecat ./cmd/pulsecat
+        
+        # Build client binary
+        go build -v -ldflags "-X main.Version=ci -X main.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S') -X main.CommitHash=${GITHUB_SHA::8}" -o pulsekitten ./cmd/pulsekitten
+        
+        # Verify binaries were created
+        ls -la pulsecat pulsekitten
+        file pulsecat pulsekitten
+        
+        # Test basic functionality
+        echo "Testing server binary help output..."
+        ./pulsecat -help 2>&1 | head -5
+        echo "Testing client binary help output..."
+        ./pulsekitten -help 2>&1 | head -5
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: binaries
+        path: |
+          pulsecat
+          pulsekitten

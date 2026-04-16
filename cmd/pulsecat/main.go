@@ -1,0 +1,612 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	v1 "pulsecat/pkg/api/v1"
+	"sync"
+	"syscall"
+	"time"
+
+	"google.golang.org/grpc"
+	"gopkg.in/yaml.v3"
+)
+
+// Version information set by build flags
+var (
+	Version    = "dev"
+	BuildTime  = "unknown"
+	CommitHash = "unknown"
+)
+
+// Config holds the application configuration
+type Config struct {
+	StartDelay int    // M: initial delay in seconds before first snapshot
+	Frequency  int    // N: frequency in seconds between snapshots
+	Port       int    // Port for gRPC server
+	LogLevel   string // Log level (debug, info, warn, error)
+
+	// Monitor enable/disable settings
+	Monitors MonitorsConfig
+}
+
+// MonitorsConfig holds enable/disable settings for each monitor type
+type MonitorsConfig struct {
+	LoadAverage         bool `yaml:"load_average"`
+	CPUUsage            bool `yaml:"cpu_usage"`
+	DiskUsage           bool `yaml:"disk_usage"`
+	NetworkStats        bool `yaml:"network_stats"`
+	TopTalkers          bool `yaml:"top_talkers"`
+	ListeningSockets    bool `yaml:"listening_sockets"`
+	TCPConnectionStates bool `yaml:"tcp_connection_states"`
+}
+
+// server implements the SystemMonitorServer interface
+type server struct {
+	v1.UnimplementedSystemMonitorServer
+	config *Config
+	mu     sync.RWMutex
+	stats  *v1.SystemStats
+}
+
+// Subscribe implements the gRPC streaming endpoint
+func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.SystemMonitor_SubscribeServer) error {
+	ctx := stream.Context()
+
+	// Use request parameters or fall back to server defaults
+	startDelay := int(req.StartDelay)
+	frequency := int(req.Frequency)
+
+	// If client didn't specify, use server defaults
+	if startDelay == 0 {
+		startDelay = s.config.StartDelay
+	}
+	if frequency == 0 {
+		frequency = s.config.Frequency
+	}
+
+	log.Printf("New subscription: start_delay=%ds, frequency=%ds, stat_types=%v",
+		startDelay, frequency, req.StatTypes)
+
+	// Wait for initial delay
+	if startDelay > 0 {
+		log.Printf("Waiting %d seconds before first snapshot for client", startDelay)
+		select {
+		case <-time.After(time.Duration(startDelay) * time.Second):
+			log.Printf("Initial delay completed, starting stream")
+		case <-ctx.Done():
+			log.Printf("Stream cancelled during initial delay")
+			return ctx.Err()
+		}
+	}
+
+	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
+	defer ticker.Stop()
+
+	snapshotCount := 0
+	for {
+		select {
+		case <-ticker.C:
+			snapshotCount++
+
+			s.mu.RLock()
+			stats := s.stats
+			s.mu.RUnlock()
+
+			if stats == nil {
+				log.Printf("No statistics available for snapshot #%d", snapshotCount)
+				continue
+			}
+
+			// Update timestamp
+			stats.Timestamp = time.Now().Unix()
+
+			// Filter statistics if client requested specific types
+			filteredStats := s.filterStats(stats, req.StatTypes)
+
+			// Send statistics to client
+			if err := stream.Send(filteredStats); err != nil {
+				log.Printf("Failed to send snapshot #%d: %v", snapshotCount, err)
+				return err
+			}
+
+			if s.config.LogLevel == "debug" {
+				log.Printf("Sent snapshot #%d to client", snapshotCount)
+			}
+
+		case <-ctx.Done():
+			log.Printf("Subscription ended after %d snapshots", snapshotCount)
+			return ctx.Err()
+		}
+	}
+}
+
+// filterStats filters system statistics based on requested stat types
+func (s *server) filterStats(stats *v1.SystemStats, statTypes []v1.StatType) *v1.SystemStats {
+	// If no filter specified, return all stats
+	if len(statTypes) == 0 {
+		return stats
+	}
+
+	// Create a copy with only requested stat types
+	filtered := &v1.SystemStats{
+		Timestamp: stats.Timestamp,
+	}
+
+	for _, statType := range statTypes {
+		switch statType {
+		case v1.StatType_STAT_TYPE_LOAD_AVERAGE:
+			filtered.LoadAverage = stats.LoadAverage
+		case v1.StatType_STAT_TYPE_CPU_USAGE:
+			filtered.CpuUsage = stats.CpuUsage
+		case v1.StatType_STAT_TYPE_DISK_USAGE:
+			filtered.DiskUsage = stats.DiskUsage
+		case v1.StatType_STAT_TYPE_NETWORK_STATS:
+			filtered.NetworkStats = stats.NetworkStats
+		case v1.StatType_STAT_TYPE_TOP_TALKERS:
+			filtered.TopTalkers = stats.TopTalkers
+		case v1.StatType_STAT_TYPE_LISTENING_SOCKETS:
+			filtered.ListeningSockets = stats.ListeningSockets
+		case v1.StatType_STAT_TYPE_TCP_CONNECTION_STATES:
+			filtered.TcpConnectionStates = stats.TcpConnectionStates
+		}
+	}
+
+	return filtered
+}
+
+// collectStatistics collects system statistics
+func (s *server) collectStatistics() *v1.SystemStats {
+	// TODO: Implement actual system statistics collection
+	// For now, return placeholder data with some variation to simulate real data
+
+	now := time.Now()
+	second := now.Second()
+
+	// Simulate some data variation
+	baseLoad := 0.1 + float64(second%30)*0.01
+
+	stats := &v1.SystemStats{
+		Timestamp: now.Unix(),
+		LoadAverage: &v1.LoadAverage{
+			OneMin:     baseLoad,
+			FiveMin:    baseLoad * 0.9,
+			FifteenMin: baseLoad * 0.8,
+		},
+		CpuUsage: &v1.CpuUsage{
+			User:   10.5 + float64(second%10),
+			System: 5.2 + float64(second%5),
+			Idle:   84.3 - float64(second%15),
+		},
+		DiskUsage: []*v1.DiskUsage{
+			{
+				Filesystem:  "/dev/sda1",
+				TotalMb:     102400,
+				UsedMb:      51200 + uint64(second%100),
+				UsedPercent: 50.0 + float64(second%10)*0.1,
+				MountPoint:  "/",
+			},
+		},
+		NetworkStats: &v1.NetworkStats{
+			TotalBytesReceived: 1000000 + uint64(second%1000)*1000,
+			TotalBytesSent:     500000 + uint64(second%500)*1000,
+		},
+		TopTalkers: []*v1.NetworkTalker{
+			{
+				Identifier: &v1.NetworkTalker_Protocol{
+					Protocol: &v1.ProtocolTalker{
+						Protocol: "TCP",
+						Port:     80,
+					},
+				},
+				BytesPerSecond: 100000 + uint64(second%10000),
+				Percentage:     80.0 + float64(second%5),
+			},
+		},
+		ListeningSockets: []*v1.ListeningSocket{
+			{
+				Command:  "sshd",
+				Pid:      1234,
+				User:     "root",
+				Protocol: "tcp",
+				Port:     22,
+				Address:  "0.0.0.0",
+			},
+		},
+		TcpConnectionStates: &v1.TcpConnectionStates{
+			Established: 10 + uint32(second%5),
+			Listen:      5,
+		},
+	}
+
+	if s.config.LogLevel == "debug" {
+		log.Printf("Collected statistics: CPU User=%.1f%%, System=%.1f%%, Idle=%.1f%%",
+			stats.CpuUsage.User, stats.CpuUsage.System, stats.CpuUsage.Idle)
+	}
+
+	return stats
+}
+
+// startStatsCollection starts periodic statistics collection
+func (s *server) startStatsCollection(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			stats := s.collectStatistics()
+
+			s.mu.Lock()
+			s.stats = stats
+			s.mu.Unlock()
+
+			if s.config.LogLevel == "debug" {
+				log.Printf("Updated system statistics at %v", time.Now().Format(time.RFC3339))
+			}
+
+		case <-ctx.Done():
+			log.Println("Stopping statistics collection")
+			return
+		}
+	}
+}
+
+// Daemon represents the system monitoring daemon
+type Daemon struct {
+	config     *Config
+	grpcServer *grpc.Server
+	server     *server
+	stopCh     chan struct{}
+	doneCh     chan struct{}
+}
+
+// NewDaemon creates a new daemon instance
+func NewDaemon(config *Config) *Daemon {
+	srv := &server{
+		config: config,
+		stats:  &v1.SystemStats{},
+	}
+
+	return &Daemon{
+		config: config,
+		server: srv,
+		stopCh: make(chan struct{}),
+		doneCh: make(chan struct{}),
+	}
+}
+
+// Run starts the daemon
+func (d *Daemon) Run() error {
+	log.Printf("Starting system monitor daemon")
+
+	// Format monitor status
+	monitorStatus := []string{}
+	if d.config.Monitors.LoadAverage {
+		monitorStatus = append(monitorStatus, "load_average")
+	}
+	if d.config.Monitors.CPUUsage {
+		monitorStatus = append(monitorStatus, "cpu_usage")
+	}
+	if d.config.Monitors.DiskUsage {
+		monitorStatus = append(monitorStatus, "disk_usage")
+	}
+	if d.config.Monitors.NetworkStats {
+		monitorStatus = append(monitorStatus, "network_stats")
+	}
+	if d.config.Monitors.TopTalkers {
+		monitorStatus = append(monitorStatus, "top_talkers")
+	}
+	if d.config.Monitors.ListeningSockets {
+		monitorStatus = append(monitorStatus, "listening_sockets")
+	}
+	if d.config.Monitors.TCPConnectionStates {
+		monitorStatus = append(monitorStatus, "tcp_connection_states")
+	}
+
+	log.Printf("Configuration: start=%ds, frequency=%ds, port=%d, log-level=%s",
+		d.config.StartDelay, d.config.Frequency, d.config.Port, d.config.LogLevel)
+	log.Printf("Monitors enabled: %v", monitorStatus)
+
+	// Create gRPC server
+	d.grpcServer = grpc.NewServer()
+	v1.RegisterSystemMonitorServer(d.grpcServer, d.server)
+
+	// Start TCP listener
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", d.config.Port))
+	if err != nil {
+		return fmt.Errorf("failed to listen on port %d: %w", d.config.Port, err)
+	}
+
+	// Context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start statistics collection
+	go d.server.startStatsCollection(ctx)
+
+	// Start gRPC server in a goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Printf("gRPC server listening on port %d", d.config.Port)
+		if err := d.grpcServer.Serve(lis); err != nil {
+			serverErr <- err
+		}
+	}()
+
+	// Wait for stop signal or server error
+	select {
+	case <-d.stopCh:
+		log.Println("Received stop signal")
+	case err := <-serverErr:
+		log.Printf("Server error: %v", err)
+		return err
+	}
+
+	// Graceful shutdown
+	log.Println("Initiating graceful shutdown...")
+	d.grpcServer.GracefulStop()
+	cancel()
+
+	close(d.doneCh)
+	return nil
+}
+
+// Stop gracefully stops the daemon
+func (d *Daemon) Stop() {
+	log.Println("Stopping daemon...")
+	close(d.stopCh)
+	<-d.doneCh
+	log.Println("Daemon stopped")
+}
+
+func main() {
+	// Set up logging
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+	log.Printf("Starting system monitor daemon v%s (build: %s, commit: %s)",
+		Version, BuildTime, CommitHash)
+
+	// Parse command-line arguments
+	var config Config
+	var configFile string
+
+	// Command-line flags (overrides config file)
+	flag.IntVar(&config.StartDelay, "start", 0, "Initial delay in seconds before first snapshot (M) (overrides config file)")
+	flag.IntVar(&config.Frequency, "frequency", 0, "Frequency in seconds between snapshots (N) (overrides config file)")
+	flag.IntVar(&config.Port, "port", 0, "Port for gRPC server (overrides config file)")
+	flag.StringVar(&config.LogLevel, "log-level", "", "Log level (debug, info, warn, error) (overrides config file)")
+	flag.StringVar(&configFile, "config", "configs/config.yaml", "Path to YAML configuration file")
+
+	// Add help flag
+	help := flag.Bool("help", false, "Show help message")
+	flag.Parse()
+
+	if *help {
+		printUsage()
+		os.Exit(0)
+	}
+
+	// Load configuration from YAML file if it exists
+	if _, err := os.Stat(configFile); err == nil {
+		yamlConfig, err := loadConfigFromYAML(configFile)
+		if err != nil {
+			log.Fatalf("Failed to load config from %s: %v", configFile, err)
+		}
+		config = *yamlConfig
+		log.Printf("Loaded configuration from %s", configFile)
+	} else {
+		log.Printf("Config file %s not found, using defaults and command-line flags", configFile)
+	}
+
+	// Override with command-line flags if specified
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "start":
+			if config.StartDelay != 0 {
+				log.Printf("Overriding start delay from config file with command-line value: %d", config.StartDelay)
+			}
+		case "frequency":
+			if config.Frequency != 0 {
+				log.Printf("Overriding frequency from config file with command-line value: %d", config.Frequency)
+			}
+		case "port":
+			if config.Port != 0 {
+				log.Printf("Overriding port from config file with command-line value: %d", config.Port)
+			}
+		case "log-level":
+			if config.LogLevel != "" {
+				log.Printf("Overriding log level from config file with command-line value: %s", config.LogLevel)
+			}
+		}
+	})
+
+	// Set defaults if still zero
+	if config.StartDelay == 0 {
+		config.StartDelay = 15
+	}
+	if config.Frequency == 0 {
+		config.Frequency = 5
+	}
+	if config.Port == 0 {
+		config.Port = 50051
+	}
+	if config.LogLevel == "" {
+		config.LogLevel = "info"
+	}
+
+	// Initialize monitors with defaults if not set from YAML
+	// (MonitorsConfig fields already have zero values which are false, but we want them true by default)
+	// We need to check if monitors were loaded from YAML by checking if any monitor is set
+	// A simple approach: if all monitors are false, set them all to true
+	allFalse := !config.Monitors.LoadAverage && !config.Monitors.CPUUsage &&
+		!config.Monitors.DiskUsage && !config.Monitors.NetworkStats &&
+		!config.Monitors.TopTalkers && !config.Monitors.ListeningSockets &&
+		!config.Monitors.TCPConnectionStates
+	if allFalse {
+		config.Monitors = MonitorsConfig{
+			LoadAverage:         true,
+			CPUUsage:            true,
+			DiskUsage:           true,
+			NetworkStats:        true,
+			TopTalkers:          true,
+			ListeningSockets:    true,
+			TCPConnectionStates: true,
+		}
+		log.Printf("No monitor configuration found, enabling all monitors by default")
+	}
+
+	// Validate configuration
+	if config.StartDelay <= 0 {
+		log.Fatal("Error: Start delay must be positive")
+	}
+	if config.Frequency <= 0 {
+		log.Fatal("Error: Frequency must be positive")
+	}
+	if config.Port <= 0 || config.Port > 65535 {
+		log.Fatal("Error: Port must be between 1 and 65535")
+	}
+
+	// Log configuration
+	enabledMonitors := 0
+	if config.Monitors.LoadAverage {
+		enabledMonitors++
+	}
+	if config.Monitors.CPUUsage {
+		enabledMonitors++
+	}
+	if config.Monitors.DiskUsage {
+		enabledMonitors++
+	}
+	if config.Monitors.NetworkStats {
+		enabledMonitors++
+	}
+	if config.Monitors.TopTalkers {
+		enabledMonitors++
+	}
+	if config.Monitors.ListeningSockets {
+		enabledMonitors++
+	}
+	if config.Monitors.TCPConnectionStates {
+		enabledMonitors++
+	}
+
+	log.Printf("Configuration loaded: start=%ds, frequency=%ds, port=%d, log-level=%s, monitors=%d/7 enabled",
+		config.StartDelay, config.Frequency, config.Port, config.LogLevel, enabledMonitors)
+
+	// Create daemon
+	daemon := NewDaemon(&config)
+
+	// Set up signal handling for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+
+	// Start daemon in a goroutine
+	errCh := make(chan error, 1)
+	go func() {
+		log.Println("Daemon starting...")
+		if err := daemon.Run(); err != nil {
+			errCh <- fmt.Errorf("daemon failed: %w", err)
+		} else {
+			errCh <- nil
+		}
+	}()
+
+	// Wait for either a signal or daemon error
+	select {
+	case sig := <-sigCh:
+		log.Printf("Received signal: %v", sig)
+		log.Println("Initiating graceful shutdown...")
+		daemon.Stop()
+		log.Println("Shutdown complete")
+	case err := <-errCh:
+		if err != nil {
+			log.Fatalf("Fatal error: %v", err)
+		}
+		log.Println("Daemon stopped normally")
+	}
+
+	log.Println("System monitor daemon exited")
+}
+
+// YAMLConfig represents the structure of the YAML configuration file
+type YAMLConfig struct {
+	Server   ServerConfig   `yaml:"server"`
+	Logging  LoggingConfig  `yaml:"logging"`
+	Monitors MonitorsConfig `yaml:"monitors"`
+	Advanced AdvancedConfig `yaml:"advanced,omitempty"`
+}
+
+type ServerConfig struct {
+	Port       int `yaml:"port"`
+	StartDelay int `yaml:"start_delay"`
+	Frequency  int `yaml:"frequency"`
+}
+
+type LoggingConfig struct {
+	Level string `yaml:"level"`
+	File  string `yaml:"file,omitempty"`
+}
+
+type AdvancedConfig struct {
+	CollectionInterval int      `yaml:"collection_interval,omitempty"`
+	MaxTopTalkers      int      `yaml:"max_top_talkers,omitempty"`
+	NetworkInterface   string   `yaml:"network_interface,omitempty"`
+	ExcludeFilesystems []string `yaml:"exclude_filesystems,omitempty"`
+}
+
+// loadConfigFromYAML loads configuration from a YAML file
+func loadConfigFromYAML(filename string) (*Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var yamlConfig YAMLConfig
+	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
+		return nil, fmt.Errorf("failed to parse YAML config: %w", err)
+	}
+
+	// Convert YAML config to internal Config
+	config := &Config{
+		StartDelay: yamlConfig.Server.StartDelay,
+		Frequency:  yamlConfig.Server.Frequency,
+		Port:       yamlConfig.Server.Port,
+		LogLevel:   yamlConfig.Logging.Level,
+		Monitors:   yamlConfig.Monitors,
+	}
+
+	// Set default values if not specified in YAML
+	if config.StartDelay == 0 {
+		config.StartDelay = 15
+	}
+	if config.Frequency == 0 {
+		config.Frequency = 5
+	}
+	if config.Port == 0 {
+		config.Port = 50051
+	}
+	if config.LogLevel == "" {
+		config.LogLevel = "info"
+	}
+
+	return config, nil
+}
+
+// Helper function to print usage
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Options:\n")
+	flag.PrintDefaults()
+}

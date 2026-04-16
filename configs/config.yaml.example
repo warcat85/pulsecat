@@ -1,0 +1,67 @@
+# PulseCat Configuration
+# YAML configuration file for the PulseCat system monitoring daemon
+
+# Server configuration
+server:
+  # Port for gRPC server (1-65535)
+  port: 50051
+  
+  # Initial delay in seconds before first snapshot (M)
+  start_delay: 15
+  
+  # Frequency in seconds between snapshots (N)
+  frequency: 5
+
+# Logging configuration
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  
+  # Log file path (optional, empty for stdout)
+  file: ""
+
+# Monitor configuration
+monitors:
+  # Enable/disable specific system monitors
+  # All monitors are enabled by default
+  
+  # System load averages (1min, 5min, 15min)
+  load_average: true
+  
+  # CPU usage statistics (user, system, idle, etc.)
+  cpu_usage: true
+  
+  # Disk usage information for all filesystems
+  disk_usage: true
+  
+  # Network statistics (bytes sent/received, packets, errors)
+  network_stats: true
+  
+  # Top network talkers by protocol/connection
+  top_talkers: true
+  
+  # Listening sockets information
+  listening_sockets: true
+  
+  # TCP connection states counts
+  tcp_connection_states: true
+
+# Advanced settings (optional)
+advanced:
+  # Statistics collection interval in seconds
+  # Overrides the server frequency for internal collection
+  # Set to 0 to use server frequency
+  collection_interval: 1
+  
+  # Maximum number of top talkers to track
+  max_top_talkers: 10
+  
+  # Network interface to monitor (empty for all)
+  network_interface: ""
+  
+  # Filesystem paths to exclude from disk usage monitoring
+  exclude_filesystems:
+    - "tmpfs"
+    - "devtmpfs"
+    - "proc"
+    - "sysfs"

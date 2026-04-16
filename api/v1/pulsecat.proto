@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package pulsecat.v1;
+
+option go_package = "pulsecat/api/v1";
+
+// SystemMonitor service provides real-time system monitoring statistics
+service SystemMonitor {
+  // Subscribe to system statistics stream
+  // Client specifies M (start_delay) and N (frequency) parameters
+  // Server streams SystemStats messages periodically
+  rpc Subscribe(SubscribeRequest) returns (stream SystemStats) {}
+}
+
+// SubscribeRequest contains subscription parameters
+message SubscribeRequest {
+  // M: Initial delay in seconds before first snapshot
+  uint32 start_delay = 1;
+  
+  // N: Frequency in seconds between snapshots
+  uint32 frequency = 2;
+  
+  // Optional: Filter for specific statistics
+  repeated StatType stat_types = 3;
+}
+
+// SystemStats contains comprehensive system statistics
+message SystemStats {
+  // Timestamp of the snapshot (Unix epoch in seconds)
+  int64 timestamp = 1;
+  
+  // System load averages
+  LoadAverage load_average = 2;
+  
+  // CPU usage statistics
+  CpuUsage cpu_usage = 3;
+  
+  // Disk usage information
+  repeated DiskUsage disk_usage = 4;
+  
+  // Network statistics
+  NetworkStats network_stats = 5;
+  
+  // Top network talkers
+  repeated NetworkTalker top_talkers = 6;
+  
+  // Listening sockets
+  repeated ListeningSocket listening_sockets = 7;
+  
+  // TCP connection states
+  TcpConnectionStates tcp_connection_states = 8;
+}
+
+// LoadAverage represents system load averages
+message LoadAverage {
+  double one_min = 1;
+  double five_min = 2;
+  double fifteen_min = 3;
+}
+
+// CpuUsage represents CPU usage percentages
+message CpuUsage {
+  double user = 1;
+  double system = 2;
+  double idle = 3;
+  double nice = 4;
+  double iowait = 5;
+  double irq = 6;
+  double soft_irq = 7;
+  double steal = 8;
+  double guest = 9;
+}
+
+// DiskUsage represents disk usage for a filesystem
+message DiskUsage {
+  string filesystem = 1;
+  uint64 total_mb = 2;
+  uint64 used_mb = 3;
+  uint64 available_mb = 4;
+  double used_percent = 5;
+  uint64 total_inodes = 6;
+  uint64 used_inodes = 7;
+  double used_inodes_percent = 8;
+  string mount_point = 9;
+}
+
+// NetworkStats contains overall network statistics
+message NetworkStats {
+  uint64 total_bytes_received = 1;
+  uint64 total_bytes_sent = 2;
+  uint64 packets_received = 3;
+  uint64 packets_sent = 4;
+  uint64 errors_received = 5;
+  uint64 errors_sent = 6;
+  uint64 drops_received = 7;
+  uint64 drops_sent = 8;
+}
+
+// NetworkTalker represents a top network talker
+message NetworkTalker {
+  oneof identifier {
+    ProtocolTalker protocol = 1;
+    ConnectionTalker connection = 2;
+  }
+  uint64 bytes_per_second = 3;
+  double percentage = 4;
+}
+
+// ProtocolTalker identifies traffic by protocol
+message ProtocolTalker {
+  string protocol = 1;  // TCP, UDP, ICMP, etc.
+  uint32 port = 2;      // Optional port for protocol
+}
+
+// ConnectionTalker identifies traffic by connection
+message ConnectionTalker {
+  string source_ip = 1;
+  uint32 source_port = 2;
+  string destination_ip = 3;
+  uint32 destination_port = 4;
+  string protocol = 5;
+}
+
+// ListeningSocket represents a listening network socket
+message ListeningSocket {
+  string command = 1;
+  uint32 pid = 2;
+  string user = 3;
+  string protocol = 4;
+  uint32 port = 5;
+  string address = 6;
+}
+
+// TcpConnectionStates contains counts of TCP connections in various states
+message TcpConnectionStates {
+  uint32 established = 1;
+  uint32 syn_sent = 2;
+  uint32 syn_recv = 3;
+  uint32 fin_wait1 = 4;
+  uint32 fin_wait2 = 5;
+  uint32 time_wait = 6;
+  uint32 close = 7;
+  uint32 close_wait = 8;
+  uint32 last_ack = 9;
+  uint32 listen = 10;
+  uint32 closing = 11;
+}
+
+// StatType enum for filtering requested statistics
+enum StatType {
+  STAT_TYPE_UNSPECIFIED = 0;
+  STAT_TYPE_LOAD_AVERAGE = 1;
+  STAT_TYPE_CPU_USAGE = 2;
+  STAT_TYPE_DISK_USAGE = 3;
+  STAT_TYPE_NETWORK_STATS = 4;
+  STAT_TYPE_TOP_TALKERS = 5;
+  STAT_TYPE_LISTENING_SOCKETS = 6;
+  STAT_TYPE_TCP_CONNECTION_STATES = 7;
+}
