@@ -6,71 +6,57 @@ option go_package = "pulsecat/api/v1";
 
 // PulseCat service provides real-time system monitoring statistics
 service PulseCat {
-  // Subscribe to system statistics stream
-  // Client specifies M (start_delay) and N (frequency) parameters
-  // Server streams SystemStats messages periodically
-  rpc Subscribe(SubscribeRequest) returns (stream SystemStats) {}
-  
-  // Meow is a ping-like endpoint that responds with "Meow!" after a delay
-  // If frequency is specified, responses are streamed periodically
-  rpc Meow(MeowRequest) returns (stream MeowResponse) {}
+  // Subscribe to a metric stream
+  // Client specifies start_delay, frequency, and metric_type
+  // If frequency is 0, a single snapshot is returned; otherwise stream periodically
+  rpc Subscribe(SubscribeRequest) returns (stream MetricPulse) {}
 }
 
 // SubscribeRequest contains subscription parameters
 message SubscribeRequest {
-  // M: Initial delay in seconds before first snapshot
+  // Initial delay in seconds before first snapshot
   uint32 start_delay = 1;
   
-  // N: Frequency in seconds between snapshots
+  // Frequency in seconds between snapshots (0 = single snapshot)
   uint32 frequency = 2;
   
-  // Optional: Filter for specific statistics
-  repeated StatType stat_types = 3;
+  // Requested metric type (only one metric per subscription)
+  MetricType metric_type = 3;
 }
 
-// MeowRequest is a ping-like request with delay and optional frequency
-message MeowRequest {
-  // Initial delay in seconds before first response
-  uint32 start_delay = 1;
-  
-  // Optional frequency in seconds between responses (0 = single response)
-  uint32 frequency = 2;
-}
-
-// MeowResponse contains the meow message
-message MeowResponse {
-  // The meow message
-  string message = 1;
-  
-  // Timestamp when the response was sent
-  int64 timestamp = 2;
-}
-
-// SystemStats contains comprehensive system statistics
-message SystemStats {
+// MetricPulse contains a single metric snapshot
+message MetricPulse {
   // Timestamp of the snapshot (Unix epoch in seconds)
   int64 timestamp = 1;
   
-  // System load averages
-  LoadAverage load_average = 2;
-  
-  // CPU usage statistics
-  CpuUsage cpu_usage = 3;
-  
-  // Disk usage information
-  repeated DiskUsage disk_usage = 4;
-  
-  // Network statistics
-  NetworkStats network_stats = 5;
-  
-  // Top network talkers
-  repeated NetworkTalker top_talkers = 6;
-  
-  // Listening sockets
-  repeated ListeningSocket listening_sockets = 7;
-  
-  // TCP connection states
-  TcpConnectionStates tcp_connection_states = 8;
+  oneof metric {
+    Meow meow = 2;
+    LoadAverage load_average = 3;
+    CpuUsage cpu_usage = 4;
+    DiskUsages disk_usage = 5;
+    NetworkStats network_stats = 6;
+    NetworkTalkers top_talkers = 7;
+    ListeningSockets listening_sockets = 8;
+    TcpConnectionStates tcp_connection_states = 9;
+  }
+}
+
+// Meow contains the meow message (no timestamp, as it's included in MetricPulse)
+message Meow {
+  string message = 1;
+}
+
+// Wrapper messages for repeated fields (required for oneof)
+message DiskUsages {
+  repeated DiskUsage disks = 1;
+}
+
+message NetworkTalkers {
+  repeated NetworkTalker talkers = 1;
+}
+
+message ListeningSockets {
+  repeated ListeningSocket sockets = 1;
 }
 
 // LoadAverage represents system load averages
@@ -130,8 +116,8 @@ message NetworkTalker {
 
 // ProtocolTalker identifies traffic by protocol
 message ProtocolTalker {
-  string protocol = 1;  // TCP, UDP, ICMP, etc.
-  uint32 port = 2;      // Optional port for protocol
+  string protocol = 1; // TCP, UDP, ICMP, etc.
+  uint32 port = 2; // Optional port for protocol
 }
 
 // ConnectionTalker identifies traffic by connection
@@ -168,14 +154,15 @@ message TcpConnectionStates {
   uint32 closing = 11;
 }
 
-// StatType enum for filtering requested statistics
-enum StatType {
-  STAT_TYPE_UNSPECIFIED = 0;
-  STAT_TYPE_LOAD_AVERAGE = 1;
-  STAT_TYPE_CPU_USAGE = 2;
-  STAT_TYPE_DISK_USAGE = 3;
-  STAT_TYPE_NETWORK_STATS = 4;
-  STAT_TYPE_TOP_TALKERS = 5;
-  STAT_TYPE_LISTENING_SOCKETS = 6;
-  STAT_TYPE_TCP_CONNECTION_STATES = 7;
+// MetricType enum for requested metric type
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_MEOW = 1;
+  METRIC_TYPE_LOAD_AVERAGE = 2;
+  METRIC_TYPE_CPU_USAGE = 3;
+  METRIC_TYPE_DISK_USAGE = 4;
+  METRIC_TYPE_NETWORK_STATS = 5;
+  METRIC_TYPE_TOP_TALKERS = 6;
+  METRIC_TYPE_LISTENING_SOCKETS = 7;
+  METRIC_TYPE_TCP_CONNECTION_STATES = 8;
 }

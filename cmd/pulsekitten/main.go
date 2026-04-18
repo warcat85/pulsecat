@@ -22,8 +22,7 @@ var (
 	serverAddr = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
 	startDelay = flag.Uint("delay", 0, "Start delay in seconds (M parameter)")
 	frequency  = flag.Uint("frequency", 1, "Frequency in seconds between snapshots (N parameter)")
-	statTypes  = flag.String("stats", "", "Comma-separated list of stat types to filter (load,cpu,disk,network,talkers,sockets,tcp)")
-	meow       = flag.Bool("meow", false, "Send meow request instead of subscribing to stats (cannot be used with -stats)")
+	metricType = flag.String("metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
 	duration   = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
 	verbose    = flag.Bool("verbose", false, "Enable verbose output")
 	version    = flag.Bool("version", false, "Print version and exit")
@@ -36,97 +35,95 @@ var (
 	CommitHash = "unknown"
 )
 
-func parseStatTypes(input string) []v1.StatType {
-	if input == "" {
-		return nil
+func parseMetricType(input string) v1.MetricType {
+	input = strings.TrimSpace(strings.ToLower(input))
+	switch input {
+	case "load":
+		return v1.MetricType_METRIC_TYPE_LOAD_AVERAGE
+	case "cpu":
+		return v1.MetricType_METRIC_TYPE_CPU_USAGE
+	case "disk":
+		return v1.MetricType_METRIC_TYPE_DISK_USAGE
+	case "network":
+		return v1.MetricType_METRIC_TYPE_NETWORK_STATS
+	case "talkers":
+		return v1.MetricType_METRIC_TYPE_TOP_TALKERS
+	case "sockets":
+		return v1.MetricType_METRIC_TYPE_LISTENING_SOCKETS
+	case "tcp":
+		return v1.MetricType_METRIC_TYPE_TCP_CONNECTION_STATES
+	case "meow":
+		return v1.MetricType_METRIC_TYPE_MEOW
+	default:
+		log.Printf("Warning: unknown metric type '%s', defaulting to load", input)
+		return v1.MetricType_METRIC_TYPE_LOAD_AVERAGE
 	}
-	parts := strings.Split(input, ",")
-	var stats []v1.StatType
-	for _, part := range parts {
-		part = strings.TrimSpace(strings.ToLower(part))
-		switch part {
-		case "load":
-			stats = append(stats, v1.StatType_STAT_TYPE_LOAD_AVERAGE)
-		case "cpu":
-			stats = append(stats, v1.StatType_STAT_TYPE_CPU_USAGE)
-		case "disk":
-			stats = append(stats, v1.StatType_STAT_TYPE_DISK_USAGE)
-		case "network":
-			stats = append(stats, v1.StatType_STAT_TYPE_NETWORK_STATS)
-		case "talkers":
-			stats = append(stats, v1.StatType_STAT_TYPE_TOP_TALKERS)
-		case "sockets":
-			stats = append(stats, v1.StatType_STAT_TYPE_LISTENING_SOCKETS)
-		case "tcp":
-			stats = append(stats, v1.StatType_STAT_TYPE_TCP_CONNECTION_STATES)
-		default:
-			log.Printf("Warning: unknown stat type '%s', ignoring", part)
-		}
-	}
-	return stats
 }
 
-func printStats(stats *v1.SystemStats) {
-	fmt.Printf("\n=== System Stats at %s ===\n", time.Unix(stats.Timestamp, 0).Format(time.RFC3339))
-	if stats.LoadAverage != nil {
-		la := stats.LoadAverage
+func printMetricPulse(pulse *v1.MetricPulse) {
+	fmt.Printf("\n=== Metric Pulse at %s ===\n", time.Unix(pulse.Timestamp, 0).Format(time.RFC3339))
+
+	switch metric := pulse.Metric.(type) {
+	case *v1.MetricPulse_Meow:
+		fmt.Printf("Meow: %s\n", metric.Meow.Message)
+	case *v1.MetricPulse_LoadAverage:
+		la := metric.LoadAverage
 		fmt.Printf("Load Average: 1m=%.2f, 5m=%.2f, 15m=%.2f\n", la.OneMin, la.FiveMin, la.FifteenMin)
-	}
-	if stats.CpuUsage != nil {
-		cpu := stats.CpuUsage
+	case *v1.MetricPulse_CpuUsage:
+		cpu := metric.CpuUsage
 		fmt.Printf("CPU Usage: User=%.1f%%, System=%.1f%%, Idle=%.1f%%, Nice=%.1f%%, IOWait=%.1f%%\n",
 			cpu.User, cpu.System, cpu.Idle, cpu.Nice, cpu.Iowait)
-	}
-	if len(stats.DiskUsage) > 0 {
-		fmt.Printf("Disk Usage (%d filesystems):\n", len(stats.DiskUsage))
-		for _, du := range stats.DiskUsage {
+	case *v1.MetricPulse_DiskUsage:
+		disks := metric.DiskUsage.Disks
+		fmt.Printf("Disk Usage (%d filesystems):\n", len(disks))
+		for _, du := range disks {
 			fmt.Printf("  %s: %.1f%% used (%d MB used / %d MB total)\n",
 				du.MountPoint, du.UsedPercent, du.UsedMb, du.TotalMb)
 		}
-	}
-	if stats.NetworkStats != nil {
-		ns := stats.NetworkStats
+	case *v1.MetricPulse_NetworkStats:
+		ns := metric.NetworkStats
 		fmt.Printf("Network: RX=%d bytes, TX=%d bytes\n", ns.TotalBytesReceived, ns.TotalBytesSent)
-	}
-	if len(stats.TopTalkers) > 0 {
-		fmt.Printf("Top Talkers (%d):\n", len(stats.TopTalkers))
-		for i, tt := range stats.TopTalkers {
+	case *v1.MetricPulse_TopTalkers:
+		talkers := metric.TopTalkers.Talkers
+		fmt.Printf("Top Talkers (%d):\n", len(talkers))
+		for i, tt := range talkers {
 			if i >= 3 {
 				break
 			}
 			fmt.Printf("  %d. %.0f bps (%.1f%%)\n", i+1, tt.BytesPerSecond, tt.Percentage)
 		}
-	}
-	if len(stats.ListeningSockets) > 0 {
-		fmt.Printf("Listening Sockets (%d):\n", len(stats.ListeningSockets))
-		for i, ls := range stats.ListeningSockets {
+	case *v1.MetricPulse_ListeningSockets:
+		sockets := metric.ListeningSockets.Sockets
+		fmt.Printf("Listening Sockets (%d):\n", len(sockets))
+		for i, ls := range sockets {
 			if i >= 3 {
 				break
 			}
 			fmt.Printf("  %d. %s:%d (%s)\n", i+1, ls.Address, ls.Port, ls.Protocol)
 		}
-	}
-	if stats.TcpConnectionStates != nil {
-		tcp := stats.TcpConnectionStates
+	case *v1.MetricPulse_TcpConnectionStates:
+		tcp := metric.TcpConnectionStates
 		fmt.Printf("TCP Connections: ESTABLISHED=%d, LISTEN=%d, TIME_WAIT=%d\n",
 			tcp.Established, tcp.Listen, tcp.TimeWait)
+	default:
+		fmt.Printf("Unknown metric type\n")
 	}
 }
 
-func runStatsSubscription(ctx context.Context, client v1.PulseCatClient) error {
-	// Parse stat types
-	stats := parseStatTypes(*statTypes)
+func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
+	// Parse metric type
+	metric := parseMetricType(*metricType)
 
 	// Create subscription request
 	req := &v1.SubscribeRequest{
 		StartDelay: uint32(*startDelay),
 		Frequency:  uint32(*frequency),
-		StatTypes:  stats,
+		MetricType: metric,
 	}
 
 	if *verbose {
 		log.Printf("Connecting to %s", *serverAddr)
-		log.Printf("Request: delay=%ds, frequency=%ds, stat_types=%v", req.StartDelay, req.Frequency, stats)
+		log.Printf("Request: delay=%ds, frequency=%ds, metric_type=%v", req.StartDelay, req.Frequency, metric)
 	}
 
 	// Start subscription
@@ -135,7 +132,7 @@ func runStatsSubscription(ctx context.Context, client v1.PulseCatClient) error {
 		return fmt.Errorf("failed to subscribe: %v", err)
 	}
 
-	log.Printf("Subscribed to PulseCat server. Receiving stats every %d seconds...", *frequency)
+	log.Printf("Subscribed to PulseCat server. Receiving %s metric every %d seconds...", *metricType, *frequency)
 	if *duration > 0 {
 		log.Printf("Will run for %d seconds", *duration)
 	}
@@ -146,12 +143,14 @@ func runStatsSubscription(ctx context.Context, client v1.PulseCatClient) error {
 
 	// Set up duration timer if specified
 	var durationTimer *time.Timer
+	var timerCh <-chan time.Time
 	if *duration > 0 {
 		durationTimer = time.NewTimer(time.Duration(*duration) * time.Second)
 		defer durationTimer.Stop()
+		timerCh = durationTimer.C
 	}
 
-	statsCount := 0
+	snapshotCount := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -159,105 +158,31 @@ func runStatsSubscription(ctx context.Context, client v1.PulseCatClient) error {
 		case <-sigCh:
 			log.Printf("Interrupt received, shutting down...")
 			return nil
-		case <-durationTimer.C:
+		case <-timerCh:
 			log.Printf("Duration reached, shutting down...")
 			return nil
 		default:
-			// Receive next stats
-			stats, err := stream.Recv()
+			// Receive next metric pulse
+			pulse, err := stream.Recv()
 			if err == io.EOF {
 				log.Printf("Server closed stream")
 				return nil
 			}
 			if err != nil {
-				return fmt.Errorf("error receiving stats: %v", err)
+				return fmt.Errorf("error receiving metric pulse: %v", err)
 			}
 
-			statsCount++
-			printStats(stats)
+			snapshotCount++
+			printMetricPulse(pulse)
 
 			if *verbose {
-				log.Printf("Received stat batch #%d", statsCount)
-			}
-		}
-	}
-}
-
-func runMeowRequest(ctx context.Context, client v1.PulseCatClient) error {
-	// Create meow request
-	req := &v1.MeowRequest{
-		StartDelay: uint32(*startDelay),
-		Frequency:  uint32(*frequency),
-	}
-
-	if *verbose {
-		log.Printf("Connecting to %s", *serverAddr)
-		log.Printf("Meow request: delay=%ds, frequency=%ds", req.StartDelay, req.Frequency)
-	}
-
-	// Start meow stream
-	stream, err := client.Meow(ctx, req)
-	if err != nil {
-		return fmt.Errorf("failed to send meow request: %v", err)
-	}
-
-	log.Printf("Sent meow request. Waiting for responses...")
-	if *duration > 0 {
-		log.Printf("Will run for %d seconds", *duration)
-	}
-
-	// Handle graceful shutdown
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-
-	// Set up duration timer if specified
-	var durationTimer *time.Timer
-	if *duration > 0 {
-		durationTimer = time.NewTimer(time.Duration(*duration) * time.Second)
-		defer durationTimer.Stop()
-	}
-
-	meowCount := 0
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-sigCh:
-			log.Printf("Interrupt received, shutting down...")
-			return nil
-		case <-durationTimer.C:
-			log.Printf("Duration reached, shutting down...")
-			return nil
-		default:
-			// Receive next meow response
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				log.Printf("Server closed meow stream")
-				return nil
-			}
-			if err != nil {
-				return fmt.Errorf("error receiving meow response: %v", err)
-			}
-
-			meowCount++
-			fmt.Printf("Meow #%d at %s: %s\n",
-				meowCount,
-				time.Unix(resp.Timestamp, 0).Format(time.RFC3339),
-				resp.Message)
-
-			if *verbose {
-				log.Printf("Received meow response #%d", meowCount)
+				log.Printf("Received metric pulse #%d", snapshotCount)
 			}
 		}
 	}
 }
 
 func runClient(ctx context.Context) error {
-	// Validate that --meow and --stats are not used together
-	if *meow && *statTypes != "" {
-		return fmt.Errorf("--meow cannot be used together with --stats")
-	}
-
 	// Set up connection
 	conn, err := grpc.NewClient(*serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -267,13 +192,8 @@ func runClient(ctx context.Context) error {
 
 	client := v1.NewPulseCatClient(conn)
 
-	if *meow {
-		// Handle meow request
-		return runMeowRequest(ctx, client)
-	} else {
-		// Handle regular stats subscription
-		return runStatsSubscription(ctx, client)
-	}
+	// Handle subscription (unified for all metric types including meow)
+	return runSubscription(ctx, client)
 }
 
 func main() {

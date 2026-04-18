@@ -25,12 +25,16 @@ var (
 	CommitHash = "unknown"
 )
 
+// Default configuration values
+const (
+	DefaultPort     = 25225
+	DefaultLogLevel = "info"
+)
+
 // Config holds the application configuration
 type Config struct {
-	StartDelay int    // M: initial delay in seconds before first snapshot
-	Frequency  int    // N: frequency in seconds between snapshots
-	Port       int    // Port for gRPC server
-	LogLevel   string // Log level (debug, info, warn, error)
+	Port     int    // Port for gRPC server
+	LogLevel string // Log level (debug, info, warn, error)
 
 	// Monitor enable/disable settings
 	Monitors MonitorsConfig
@@ -52,27 +56,32 @@ type server struct {
 	v1.UnimplementedPulseCatServer
 	config *Config
 	mu     sync.RWMutex
-	stats  *v1.SystemStats
+
+	// Individual metric data
+	loadAverage         *v1.LoadAverage
+	cpuUsage            *v1.CpuUsage
+	diskUsages          []*v1.DiskUsage
+	networkStats        *v1.NetworkStats
+	topTalkers          []*v1.NetworkTalker
+	listeningSockets    []*v1.ListeningSocket
+	tcpConnectionStates *v1.TcpConnectionStates
 }
 
 // Subscribe implements the gRPC streaming endpoint
 func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_SubscribeServer) error {
 	ctx := stream.Context()
 
-	// Use request parameters or fall back to server defaults
+	// Validate request parameters
+	if req.MetricType == v1.MetricType_METRIC_TYPE_UNSPECIFIED {
+		return fmt.Errorf("metric_type must be specified")
+	}
+
+	// Use request parameters directly (0 means no delay / single snapshot)
 	startDelay := int(req.StartDelay)
 	frequency := int(req.Frequency)
 
-	// If client didn't specify, use server defaults
-	if startDelay == 0 {
-		startDelay = s.config.StartDelay
-	}
-	if frequency == 0 {
-		frequency = s.config.Frequency
-	}
-
-	log.Printf("New subscription: start_delay=%ds, frequency=%ds, stat_types=%v",
-		startDelay, frequency, req.StatTypes)
+	log.Printf("New subscription: start_delay=%ds, frequency=%ds, metric_type=%v",
+		startDelay, frequency, req.MetricType)
 
 	// Wait for initial delay
 	if startDelay > 0 {
@@ -86,6 +95,20 @@ func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_Subscrib
 		}
 	}
 
+	// If frequency is 0, send a single snapshot and return
+	if frequency == 0 {
+		pulse, err := s.createMetricPulse(req.MetricType)
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(pulse); err != nil {
+			log.Printf("Failed to send single snapshot: %v", err)
+			return err
+		}
+		log.Printf("Sent single snapshot for metric_type=%v", req.MetricType)
+		return nil
+	}
+
 	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
 	defer ticker.Stop()
 
@@ -95,23 +118,14 @@ func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_Subscrib
 		case <-ticker.C:
 			snapshotCount++
 
-			s.mu.RLock()
-			stats := s.stats
-			s.mu.RUnlock()
-
-			if stats == nil {
-				log.Printf("No statistics available for snapshot #%d", snapshotCount)
+			pulse, err := s.createMetricPulse(req.MetricType)
+			if err != nil {
+				log.Printf("Failed to create metric pulse for snapshot #%d: %v", snapshotCount, err)
 				continue
 			}
 
-			// Update timestamp
-			stats.Timestamp = time.Now().Unix()
-
-			// Filter statistics if client requested specific types
-			filteredStats := s.filterStats(stats, req.StatTypes)
-
-			// Send statistics to client
-			if err := stream.Send(filteredStats); err != nil {
+			// Send metric pulse to client
+			if err := stream.Send(pulse); err != nil {
 				log.Printf("Failed to send snapshot #%d: %v", snapshotCount, err)
 				return err
 			}
@@ -127,113 +141,88 @@ func (s *server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_Subscrib
 	}
 }
 
-// Meow implements the ping-like endpoint that responds with "Meow!" after a delay
-func (s *server) Meow(req *v1.MeowRequest, stream v1.PulseCat_MeowServer) error {
-	ctx := stream.Context()
+// createMetricPulse creates a MetricPulse message for the requested metric type
+func (s *server) createMetricPulse(metricType v1.MetricType) (*v1.MetricPulse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	// Get parameters from request
-	startDelay := int(req.StartDelay)
-	frequency := int(req.Frequency)
-
-	log.Printf("Meow request: start_delay=%ds, frequency=%ds", startDelay, frequency)
-
-	// Wait for initial delay
-	if startDelay > 0 {
-		log.Printf("Waiting %d seconds before first meow", startDelay)
-		select {
-		case <-time.After(time.Duration(startDelay) * time.Second):
-			log.Printf("Initial delay completed, sending meow")
-		case <-ctx.Done():
-			log.Printf("Meow request cancelled during initial delay")
-			return ctx.Err()
-		}
-	}
-
-	// Send first meow response
-	response := &v1.MeowResponse{
-		Message:   "Meow!",
+	pulse := &v1.MetricPulse{
 		Timestamp: time.Now().Unix(),
 	}
 
-	if err := stream.Send(response); err != nil {
-		log.Printf("Failed to send meow response: %v", err)
-		return err
-	}
-
-	log.Printf("Sent meow response")
-
-	// If frequency is specified and > 0, continue sending responses periodically
-	if frequency > 0 {
-		ticker := time.NewTicker(time.Duration(frequency) * time.Second)
-		defer ticker.Stop()
-
-		meowCount := 1
-		for {
-			select {
-			case <-ticker.C:
-				meowCount++
-				response := &v1.MeowResponse{
-					Message:   "Meow!",
-					Timestamp: time.Now().Unix(),
-				}
-
-				if err := stream.Send(response); err != nil {
-					log.Printf("Failed to send meow response #%d: %v", meowCount, err)
-					return err
-				}
-
-				log.Printf("Sent meow response #%d", meowCount)
-
-			case <-ctx.Done():
-				log.Printf("Meow stream ended after %d responses", meowCount)
-				return ctx.Err()
-			}
+	switch metricType {
+	case v1.MetricType_METRIC_TYPE_MEOW:
+		pulse.Metric = &v1.MetricPulse_Meow{
+			Meow: &v1.Meow{
+				Message: "Meow!",
+			},
 		}
+	case v1.MetricType_METRIC_TYPE_LOAD_AVERAGE:
+		if s.loadAverage == nil {
+			return nil, fmt.Errorf("load average data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_LoadAverage{
+			LoadAverage: s.loadAverage,
+		}
+	case v1.MetricType_METRIC_TYPE_CPU_USAGE:
+		if s.cpuUsage == nil {
+			return nil, fmt.Errorf("CPU usage data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_CpuUsage{
+			CpuUsage: s.cpuUsage,
+		}
+	case v1.MetricType_METRIC_TYPE_DISK_USAGE:
+		if s.diskUsages == nil {
+			return nil, fmt.Errorf("disk usage data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_DiskUsage{
+			DiskUsage: &v1.DiskUsages{
+				Disks: s.diskUsages,
+			},
+		}
+	case v1.MetricType_METRIC_TYPE_NETWORK_STATS:
+		if s.networkStats == nil {
+			return nil, fmt.Errorf("network stats data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_NetworkStats{
+			NetworkStats: s.networkStats,
+		}
+	case v1.MetricType_METRIC_TYPE_TOP_TALKERS:
+		if s.topTalkers == nil {
+			return nil, fmt.Errorf("top talkers data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_TopTalkers{
+			TopTalkers: &v1.NetworkTalkers{
+				Talkers: s.topTalkers,
+			},
+		}
+	case v1.MetricType_METRIC_TYPE_LISTENING_SOCKETS:
+		if s.listeningSockets == nil {
+			return nil, fmt.Errorf("listening sockets data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_ListeningSockets{
+			ListeningSockets: &v1.ListeningSockets{
+				Sockets: s.listeningSockets,
+			},
+		}
+	case v1.MetricType_METRIC_TYPE_TCP_CONNECTION_STATES:
+		if s.tcpConnectionStates == nil {
+			return nil, fmt.Errorf("TCP connection states data not available")
+		}
+		pulse.Metric = &v1.MetricPulse_TcpConnectionStates{
+			TcpConnectionStates: s.tcpConnectionStates,
+		}
+	default:
+		return nil, fmt.Errorf("unsupported metric type: %v", metricType)
 	}
 
-	// Single response mode
-	log.Printf("Meow request completed (single response)")
-	return nil
+	return pulse, nil
 }
 
-// filterStats filters system statistics based on requested stat types
-func (s *server) filterStats(stats *v1.SystemStats, statTypes []v1.StatType) *v1.SystemStats {
-	// If no filter specified, return all stats
-	if len(statTypes) == 0 {
-		return stats
-	}
-
-	// Create a copy with only requested stat types
-	filtered := &v1.SystemStats{
-		Timestamp: stats.Timestamp,
-	}
-
-	for _, statType := range statTypes {
-		switch statType {
-		case v1.StatType_STAT_TYPE_LOAD_AVERAGE:
-			filtered.LoadAverage = stats.LoadAverage
-		case v1.StatType_STAT_TYPE_CPU_USAGE:
-			filtered.CpuUsage = stats.CpuUsage
-		case v1.StatType_STAT_TYPE_DISK_USAGE:
-			filtered.DiskUsage = stats.DiskUsage
-		case v1.StatType_STAT_TYPE_NETWORK_STATS:
-			filtered.NetworkStats = stats.NetworkStats
-		case v1.StatType_STAT_TYPE_TOP_TALKERS:
-			filtered.TopTalkers = stats.TopTalkers
-		case v1.StatType_STAT_TYPE_LISTENING_SOCKETS:
-			filtered.ListeningSockets = stats.ListeningSockets
-		case v1.StatType_STAT_TYPE_TCP_CONNECTION_STATES:
-			filtered.TcpConnectionStates = stats.TcpConnectionStates
-		}
-	}
-
-	return filtered
-}
-
-// collectStatistics collects system statistics
-func (s *server) collectStatistics() *v1.SystemStats {
+// collectStatistics collects system statistics and updates server fields
+func (s *server) collectStatistics() {
 	// TODO: Implement actual system statistics collection
-	// For now, return placeholder data with some variation to simulate real data
+	// For now, generate placeholder data with some variation to simulate real data
 
 	now := time.Now()
 	second := now.Second()
@@ -241,65 +230,70 @@ func (s *server) collectStatistics() *v1.SystemStats {
 	// Simulate some data variation
 	baseLoad := 0.1 + float64(second%30)*0.01
 
-	stats := &v1.SystemStats{
-		Timestamp: now.Unix(),
-		LoadAverage: &v1.LoadAverage{
-			OneMin:     baseLoad,
-			FiveMin:    baseLoad * 0.9,
-			FifteenMin: baseLoad * 0.8,
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Update individual metric fields
+	s.loadAverage = &v1.LoadAverage{
+		OneMin:     baseLoad,
+		FiveMin:    baseLoad * 0.9,
+		FifteenMin: baseLoad * 0.8,
+	}
+
+	s.cpuUsage = &v1.CpuUsage{
+		User:   10.5 + float64(second%10),
+		System: 5.2 + float64(second%5),
+		Idle:   84.3 - float64(second%15),
+	}
+
+	s.diskUsages = []*v1.DiskUsage{
+		{
+			Filesystem:  "/dev/sda1",
+			TotalMb:     102400,
+			UsedMb:      51200 + uint64(second%100),
+			UsedPercent: 50.0 + float64(second%10)*0.1,
+			MountPoint:  "/",
 		},
-		CpuUsage: &v1.CpuUsage{
-			User:   10.5 + float64(second%10),
-			System: 5.2 + float64(second%5),
-			Idle:   84.3 - float64(second%15),
-		},
-		DiskUsage: []*v1.DiskUsage{
-			{
-				Filesystem:  "/dev/sda1",
-				TotalMb:     102400,
-				UsedMb:      51200 + uint64(second%100),
-				UsedPercent: 50.0 + float64(second%10)*0.1,
-				MountPoint:  "/",
-			},
-		},
-		NetworkStats: &v1.NetworkStats{
-			TotalBytesReceived: 1000000 + uint64(second%1000)*1000,
-			TotalBytesSent:     500000 + uint64(second%500)*1000,
-		},
-		TopTalkers: []*v1.NetworkTalker{
-			{
-				Identifier: &v1.NetworkTalker_Protocol{
-					Protocol: &v1.ProtocolTalker{
-						Protocol: "TCP",
-						Port:     80,
-					},
+	}
+
+	s.networkStats = &v1.NetworkStats{
+		TotalBytesReceived: 1000000 + uint64(second%1000)*1000,
+		TotalBytesSent:     500000 + uint64(second%500)*1000,
+	}
+
+	s.topTalkers = []*v1.NetworkTalker{
+		{
+			Identifier: &v1.NetworkTalker_Protocol{
+				Protocol: &v1.ProtocolTalker{
+					Protocol: "TCP",
+					Port:     80,
 				},
-				BytesPerSecond: 100000 + uint64(second%10000),
-				Percentage:     80.0 + float64(second%5),
 			},
+			BytesPerSecond: 100000 + uint64(second%10000),
+			Percentage:     80.0 + float64(second%5),
 		},
-		ListeningSockets: []*v1.ListeningSocket{
-			{
-				Command:  "sshd",
-				Pid:      1234,
-				User:     "root",
-				Protocol: "tcp",
-				Port:     22,
-				Address:  "0.0.0.0",
-			},
+	}
+
+	s.listeningSockets = []*v1.ListeningSocket{
+		{
+			Command:  "sshd",
+			Pid:      1234,
+			User:     "root",
+			Protocol: "tcp",
+			Port:     22,
+			Address:  "0.0.0.0",
 		},
-		TcpConnectionStates: &v1.TcpConnectionStates{
-			Established: 10 + uint32(second%5),
-			Listen:      5,
-		},
+	}
+
+	s.tcpConnectionStates = &v1.TcpConnectionStates{
+		Established: 10 + uint32(second%5),
+		Listen:      5,
 	}
 
 	if s.config.LogLevel == "debug" {
 		log.Printf("Collected statistics: CPU User=%.1f%%, System=%.1f%%, Idle=%.1f%%",
-			stats.CpuUsage.User, stats.CpuUsage.System, stats.CpuUsage.Idle)
+			s.cpuUsage.User, s.cpuUsage.System, s.cpuUsage.Idle)
 	}
-
-	return stats
 }
 
 // startStatsCollection starts periodic statistics collection
@@ -310,11 +304,7 @@ func (s *server) startStatsCollection(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			stats := s.collectStatistics()
-
-			s.mu.Lock()
-			s.stats = stats
-			s.mu.Unlock()
+			s.collectStatistics()
 
 			if s.config.LogLevel == "debug" {
 				log.Printf("Updated system statistics at %v", time.Now().Format(time.RFC3339))
@@ -340,7 +330,6 @@ type Daemon struct {
 func NewDaemon(config *Config) *Daemon {
 	srv := &server{
 		config: config,
-		stats:  &v1.SystemStats{},
 	}
 
 	return &Daemon{
@@ -379,8 +368,8 @@ func (d *Daemon) Run() error {
 		monitorStatus = append(monitorStatus, "tcp_connection_states")
 	}
 
-	log.Printf("Configuration: start=%ds, frequency=%ds, port=%d, log-level=%s",
-		d.config.StartDelay, d.config.Frequency, d.config.Port, d.config.LogLevel)
+	log.Printf("Configuration: port=%d, log-level=%s",
+		d.config.Port, d.config.LogLevel)
 	log.Printf("Monitors enabled: %v", monitorStatus)
 
 	// Create gRPC server
@@ -446,8 +435,6 @@ func main() {
 	var configFile string
 
 	// Command-line flags (overrides config file)
-	flag.IntVar(&config.StartDelay, "start", 0, "Initial delay in seconds before first snapshot (M) (overrides config file)")
-	flag.IntVar(&config.Frequency, "frequency", 0, "Frequency in seconds between snapshots (N) (overrides config file)")
 	flag.IntVar(&config.Port, "port", 0, "Port for gRPC server (overrides config file)")
 	flag.StringVar(&config.LogLevel, "log-level", "", "Log level (debug, info, warn, error) (overrides config file)")
 	flag.StringVar(&configFile, "config", "configs/config.yaml", "Path to YAML configuration file")
@@ -461,52 +448,49 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Track which flags were explicitly set
+	visitedFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		visitedFlags[f.Name] = true
+	})
+
 	// Load configuration from YAML file if it exists
+	var yamlConfig *Config
 	if _, err := os.Stat(configFile); err == nil {
-		yamlConfig, err := loadConfigFromYAML(configFile)
+		var err error
+		yamlConfig, err = loadConfigFromYAML(configFile)
 		if err != nil {
 			log.Fatalf("Failed to load config from %s: %v", configFile, err)
 		}
-		config = *yamlConfig
 		log.Printf("Loaded configuration from %s", configFile)
 	} else {
 		log.Printf("Config file %s not found, using defaults and command-line flags", configFile)
 	}
 
-	// Override with command-line flags if specified
-	flag.Visit(func(f *flag.Flag) {
-		switch f.Name {
-		case "start":
-			if config.StartDelay != 0 {
-				log.Printf("Overriding start delay from config file with command-line value: %d", config.StartDelay)
-			}
-		case "frequency":
-			if config.Frequency != 0 {
-				log.Printf("Overriding frequency from config file with command-line value: %d", config.Frequency)
-			}
-		case "port":
-			if config.Port != 0 {
-				log.Printf("Overriding port from config file with command-line value: %d", config.Port)
-			}
-		case "log-level":
-			if config.LogLevel != "" {
-				log.Printf("Overriding log level from config file with command-line value: %s", config.LogLevel)
-			}
+	// Merge YAML config with command-line flags (flags override YAML)
+	if yamlConfig != nil {
+		// Port: use flag value if visited, else YAML value
+		if !visitedFlags["port"] {
+			config.Port = yamlConfig.Port
+		} else {
+			log.Printf("Overriding port from config file with command-line value: %d", config.Port)
 		}
-	})
+		// LogLevel: use flag value if visited, else YAML value
+		if !visitedFlags["log-level"] {
+			config.LogLevel = yamlConfig.LogLevel
+		} else {
+			log.Printf("Overriding log level from config file with command-line value: %s", config.LogLevel)
+		}
+		// Monitors: always use YAML value (no flag for monitors)
+		config.Monitors = yamlConfig.Monitors
+	}
 
 	// Set defaults if still zero
-	if config.StartDelay == 0 {
-		config.StartDelay = 15
-	}
-	if config.Frequency == 0 {
-		config.Frequency = 5
-	}
 	if config.Port == 0 {
-		config.Port = 25225
+		config.Port = DefaultPort
 	}
 	if config.LogLevel == "" {
-		config.LogLevel = "info"
+		config.LogLevel = DefaultLogLevel
 	}
 
 	// Initialize monitors with defaults if not set from YAML
@@ -531,12 +515,6 @@ func main() {
 	}
 
 	// Validate configuration
-	if config.StartDelay <= 0 {
-		log.Fatal("Error: Start delay must be positive")
-	}
-	if config.Frequency <= 0 {
-		log.Fatal("Error: Frequency must be positive")
-	}
 	if config.Port <= 0 || config.Port > 65535 {
 		log.Fatal("Error: Port must be between 1 and 65535")
 	}
@@ -565,8 +543,8 @@ func main() {
 		enabledMonitors++
 	}
 
-	log.Printf("Configuration loaded: start=%ds, frequency=%ds, port=%d, log-level=%s, monitors=%d/7 enabled",
-		config.StartDelay, config.Frequency, config.Port, config.LogLevel, enabledMonitors)
+	log.Printf("Configuration loaded: port=%d, log-level=%s, monitors=%d/7 enabled",
+		config.Port, config.LogLevel, enabledMonitors)
 
 	// Create daemon
 	daemon := NewDaemon(&config)
@@ -612,9 +590,7 @@ type YAMLConfig struct {
 }
 
 type ServerConfig struct {
-	Port       int `yaml:"port"`
-	StartDelay int `yaml:"start_delay"`
-	Frequency  int `yaml:"frequency"`
+	Port int `yaml:"port"`
 }
 
 type LoggingConfig struct {
@@ -649,25 +625,17 @@ func loadConfigFromYAML(filename string) (*Config, error) {
 
 	// Convert YAML config to internal Config
 	config := &Config{
-		StartDelay: yamlConfig.Server.StartDelay,
-		Frequency:  yamlConfig.Server.Frequency,
-		Port:       yamlConfig.Server.Port,
-		LogLevel:   yamlConfig.Logging.Level,
-		Monitors:   yamlConfig.Monitors,
+		Port:     yamlConfig.Server.Port,
+		LogLevel: yamlConfig.Logging.Level,
+		Monitors: yamlConfig.Monitors,
 	}
 
 	// Set default values if not specified in YAML
-	if config.StartDelay == 0 {
-		config.StartDelay = 15
-	}
-	if config.Frequency == 0 {
-		config.Frequency = 5
-	}
 	if config.Port == 0 {
-		config.Port = 25225
+		config.Port = DefaultPort
 	}
 	if config.LogLevel == "" {
-		config.LogLevel = "info"
+		config.LogLevel = DefaultLogLevel
 	}
 
 	return config, nil

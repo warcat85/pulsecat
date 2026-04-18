@@ -21,80 +21,83 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// StatType enum for filtering requested statistics
-type StatType int32
+// MetricType enum for requested metric type
+type MetricType int32
 
 const (
-	StatType_STAT_TYPE_UNSPECIFIED           StatType = 0
-	StatType_STAT_TYPE_LOAD_AVERAGE          StatType = 1
-	StatType_STAT_TYPE_CPU_USAGE             StatType = 2
-	StatType_STAT_TYPE_DISK_USAGE            StatType = 3
-	StatType_STAT_TYPE_NETWORK_STATS         StatType = 4
-	StatType_STAT_TYPE_TOP_TALKERS           StatType = 5
-	StatType_STAT_TYPE_LISTENING_SOCKETS     StatType = 6
-	StatType_STAT_TYPE_TCP_CONNECTION_STATES StatType = 7
+	MetricType_METRIC_TYPE_UNSPECIFIED           MetricType = 0
+	MetricType_METRIC_TYPE_MEOW                  MetricType = 1
+	MetricType_METRIC_TYPE_LOAD_AVERAGE          MetricType = 2
+	MetricType_METRIC_TYPE_CPU_USAGE             MetricType = 3
+	MetricType_METRIC_TYPE_DISK_USAGE            MetricType = 4
+	MetricType_METRIC_TYPE_NETWORK_STATS         MetricType = 5
+	MetricType_METRIC_TYPE_TOP_TALKERS           MetricType = 6
+	MetricType_METRIC_TYPE_LISTENING_SOCKETS     MetricType = 7
+	MetricType_METRIC_TYPE_TCP_CONNECTION_STATES MetricType = 8
 )
 
-// Enum value maps for StatType.
+// Enum value maps for MetricType.
 var (
-	StatType_name = map[int32]string{
-		0: "STAT_TYPE_UNSPECIFIED",
-		1: "STAT_TYPE_LOAD_AVERAGE",
-		2: "STAT_TYPE_CPU_USAGE",
-		3: "STAT_TYPE_DISK_USAGE",
-		4: "STAT_TYPE_NETWORK_STATS",
-		5: "STAT_TYPE_TOP_TALKERS",
-		6: "STAT_TYPE_LISTENING_SOCKETS",
-		7: "STAT_TYPE_TCP_CONNECTION_STATES",
+	MetricType_name = map[int32]string{
+		0: "METRIC_TYPE_UNSPECIFIED",
+		1: "METRIC_TYPE_MEOW",
+		2: "METRIC_TYPE_LOAD_AVERAGE",
+		3: "METRIC_TYPE_CPU_USAGE",
+		4: "METRIC_TYPE_DISK_USAGE",
+		5: "METRIC_TYPE_NETWORK_STATS",
+		6: "METRIC_TYPE_TOP_TALKERS",
+		7: "METRIC_TYPE_LISTENING_SOCKETS",
+		8: "METRIC_TYPE_TCP_CONNECTION_STATES",
 	}
-	StatType_value = map[string]int32{
-		"STAT_TYPE_UNSPECIFIED":           0,
-		"STAT_TYPE_LOAD_AVERAGE":          1,
-		"STAT_TYPE_CPU_USAGE":             2,
-		"STAT_TYPE_DISK_USAGE":            3,
-		"STAT_TYPE_NETWORK_STATS":         4,
-		"STAT_TYPE_TOP_TALKERS":           5,
-		"STAT_TYPE_LISTENING_SOCKETS":     6,
-		"STAT_TYPE_TCP_CONNECTION_STATES": 7,
+	MetricType_value = map[string]int32{
+		"METRIC_TYPE_UNSPECIFIED":           0,
+		"METRIC_TYPE_MEOW":                  1,
+		"METRIC_TYPE_LOAD_AVERAGE":          2,
+		"METRIC_TYPE_CPU_USAGE":             3,
+		"METRIC_TYPE_DISK_USAGE":            4,
+		"METRIC_TYPE_NETWORK_STATS":         5,
+		"METRIC_TYPE_TOP_TALKERS":           6,
+		"METRIC_TYPE_LISTENING_SOCKETS":     7,
+		"METRIC_TYPE_TCP_CONNECTION_STATES": 8,
 	}
 )
 
-func (x StatType) Enum() *StatType {
-	p := new(StatType)
+func (x MetricType) Enum() *MetricType {
+	p := new(MetricType)
 	*p = x
 	return p
 }
 
-func (x StatType) String() string {
+func (x MetricType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (StatType) Descriptor() protoreflect.EnumDescriptor {
+func (MetricType) Descriptor() protoreflect.EnumDescriptor {
 	return file_api_v1_pulsecat_proto_enumTypes[0].Descriptor()
 }
 
-func (StatType) Type() protoreflect.EnumType {
+func (MetricType) Type() protoreflect.EnumType {
 	return &file_api_v1_pulsecat_proto_enumTypes[0]
 }
 
-func (x StatType) Number() protoreflect.EnumNumber {
+func (x MetricType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use StatType.Descriptor instead.
-func (StatType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use MetricType.Descriptor instead.
+func (MetricType) EnumDescriptor() ([]byte, []int) {
 	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{0}
 }
 
 // SubscribeRequest contains subscription parameters
 type SubscribeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// M: Initial delay in seconds before first snapshot
+	// Initial delay in seconds before first snapshot
 	StartDelay uint32 `protobuf:"varint,1,opt,name=start_delay,json=startDelay,proto3" json:"start_delay,omitempty"`
-	// N: Frequency in seconds between snapshots
+	// Frequency in seconds between snapshots (0 = single snapshot)
 	Frequency uint32 `protobuf:"varint,2,opt,name=frequency,proto3" json:"frequency,omitempty"`
-	// Optional: Filter for specific statistics
-	StatTypes     []StatType `protobuf:"varint,3,rep,packed,name=stat_types,json=statTypes,proto3,enum=pulsecat.v1.StatType" json:"stat_types,omitempty"`
+	// Requested metric type (only one metric per subscription)
+	MetricType    MetricType `protobuf:"varint,3,opt,name=metric_type,json=metricType,proto3,enum=pulsecat.v1.MetricType" json:"metric_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -143,39 +146,224 @@ func (x *SubscribeRequest) GetFrequency() uint32 {
 	return 0
 }
 
-func (x *SubscribeRequest) GetStatTypes() []StatType {
+func (x *SubscribeRequest) GetMetricType() MetricType {
 	if x != nil {
-		return x.StatTypes
+		return x.MetricType
+	}
+	return MetricType_METRIC_TYPE_UNSPECIFIED
+}
+
+// MetricPulse contains a single metric snapshot
+type MetricPulse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Timestamp of the snapshot (Unix epoch in seconds)
+	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	// Types that are valid to be assigned to Metric:
+	//
+	//	*MetricPulse_Meow
+	//	*MetricPulse_LoadAverage
+	//	*MetricPulse_CpuUsage
+	//	*MetricPulse_DiskUsage
+	//	*MetricPulse_NetworkStats
+	//	*MetricPulse_TopTalkers
+	//	*MetricPulse_ListeningSockets
+	//	*MetricPulse_TcpConnectionStates
+	Metric        isMetricPulse_Metric `protobuf_oneof:"metric"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MetricPulse) Reset() {
+	*x = MetricPulse{}
+	mi := &file_api_v1_pulsecat_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MetricPulse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MetricPulse) ProtoMessage() {}
+
+func (x *MetricPulse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_pulsecat_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MetricPulse.ProtoReflect.Descriptor instead.
+func (*MetricPulse) Descriptor() ([]byte, []int) {
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *MetricPulse) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *MetricPulse) GetMetric() isMetricPulse_Metric {
+	if x != nil {
+		return x.Metric
 	}
 	return nil
 }
 
-// MeowRequest is a ping-like request with delay and optional frequency
-type MeowRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Initial delay in seconds before first response
-	StartDelay uint32 `protobuf:"varint,1,opt,name=start_delay,json=startDelay,proto3" json:"start_delay,omitempty"`
-	// Optional frequency in seconds between responses (0 = single response)
-	Frequency     uint32 `protobuf:"varint,2,opt,name=frequency,proto3" json:"frequency,omitempty"`
+func (x *MetricPulse) GetMeow() *Meow {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_Meow); ok {
+			return x.Meow
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetLoadAverage() *LoadAverage {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_LoadAverage); ok {
+			return x.LoadAverage
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetCpuUsage() *CpuUsage {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_CpuUsage); ok {
+			return x.CpuUsage
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetDiskUsage() *DiskUsages {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_DiskUsage); ok {
+			return x.DiskUsage
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetNetworkStats() *NetworkStats {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_NetworkStats); ok {
+			return x.NetworkStats
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetTopTalkers() *NetworkTalkers {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_TopTalkers); ok {
+			return x.TopTalkers
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetListeningSockets() *ListeningSockets {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_ListeningSockets); ok {
+			return x.ListeningSockets
+		}
+	}
+	return nil
+}
+
+func (x *MetricPulse) GetTcpConnectionStates() *TcpConnectionStates {
+	if x != nil {
+		if x, ok := x.Metric.(*MetricPulse_TcpConnectionStates); ok {
+			return x.TcpConnectionStates
+		}
+	}
+	return nil
+}
+
+type isMetricPulse_Metric interface {
+	isMetricPulse_Metric()
+}
+
+type MetricPulse_Meow struct {
+	Meow *Meow `protobuf:"bytes,2,opt,name=meow,proto3,oneof"`
+}
+
+type MetricPulse_LoadAverage struct {
+	LoadAverage *LoadAverage `protobuf:"bytes,3,opt,name=load_average,json=loadAverage,proto3,oneof"`
+}
+
+type MetricPulse_CpuUsage struct {
+	CpuUsage *CpuUsage `protobuf:"bytes,4,opt,name=cpu_usage,json=cpuUsage,proto3,oneof"`
+}
+
+type MetricPulse_DiskUsage struct {
+	DiskUsage *DiskUsages `protobuf:"bytes,5,opt,name=disk_usage,json=diskUsage,proto3,oneof"`
+}
+
+type MetricPulse_NetworkStats struct {
+	NetworkStats *NetworkStats `protobuf:"bytes,6,opt,name=network_stats,json=networkStats,proto3,oneof"`
+}
+
+type MetricPulse_TopTalkers struct {
+	TopTalkers *NetworkTalkers `protobuf:"bytes,7,opt,name=top_talkers,json=topTalkers,proto3,oneof"`
+}
+
+type MetricPulse_ListeningSockets struct {
+	ListeningSockets *ListeningSockets `protobuf:"bytes,8,opt,name=listening_sockets,json=listeningSockets,proto3,oneof"`
+}
+
+type MetricPulse_TcpConnectionStates struct {
+	TcpConnectionStates *TcpConnectionStates `protobuf:"bytes,9,opt,name=tcp_connection_states,json=tcpConnectionStates,proto3,oneof"`
+}
+
+func (*MetricPulse_Meow) isMetricPulse_Metric() {}
+
+func (*MetricPulse_LoadAverage) isMetricPulse_Metric() {}
+
+func (*MetricPulse_CpuUsage) isMetricPulse_Metric() {}
+
+func (*MetricPulse_DiskUsage) isMetricPulse_Metric() {}
+
+func (*MetricPulse_NetworkStats) isMetricPulse_Metric() {}
+
+func (*MetricPulse_TopTalkers) isMetricPulse_Metric() {}
+
+func (*MetricPulse_ListeningSockets) isMetricPulse_Metric() {}
+
+func (*MetricPulse_TcpConnectionStates) isMetricPulse_Metric() {}
+
+// Meow contains the meow message (no timestamp, as it's included in MetricPulse)
+type Meow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *MeowRequest) Reset() {
-	*x = MeowRequest{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[1]
+func (x *Meow) Reset() {
+	*x = Meow{}
+	mi := &file_api_v1_pulsecat_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *MeowRequest) String() string {
+func (x *Meow) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MeowRequest) ProtoMessage() {}
+func (*Meow) ProtoMessage() {}
 
-func (x *MeowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[1]
+func (x *Meow) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_pulsecat_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -186,117 +374,40 @@ func (x *MeowRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use MeowRequest.ProtoReflect.Descriptor instead.
-func (*MeowRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *MeowRequest) GetStartDelay() uint32 {
-	if x != nil {
-		return x.StartDelay
-	}
-	return 0
-}
-
-func (x *MeowRequest) GetFrequency() uint32 {
-	if x != nil {
-		return x.Frequency
-	}
-	return 0
-}
-
-// MeowResponse contains the meow message
-type MeowResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The meow message
-	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	// Timestamp when the response was sent
-	Timestamp     int64 `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MeowResponse) Reset() {
-	*x = MeowResponse{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MeowResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MeowResponse) ProtoMessage() {}
-
-func (x *MeowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MeowResponse.ProtoReflect.Descriptor instead.
-func (*MeowResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use Meow.ProtoReflect.Descriptor instead.
+func (*Meow) Descriptor() ([]byte, []int) {
 	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *MeowResponse) GetMessage() string {
+func (x *Meow) GetMessage() string {
 	if x != nil {
 		return x.Message
 	}
 	return ""
 }
 
-func (x *MeowResponse) GetTimestamp() int64 {
-	if x != nil {
-		return x.Timestamp
-	}
-	return 0
+// Wrapper messages for repeated fields (required for oneof)
+type DiskUsages struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Disks         []*DiskUsage           `protobuf:"bytes,1,rep,name=disks,proto3" json:"disks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-// SystemStats contains comprehensive system statistics
-type SystemStats struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Timestamp of the snapshot (Unix epoch in seconds)
-	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	// System load averages
-	LoadAverage *LoadAverage `protobuf:"bytes,2,opt,name=load_average,json=loadAverage,proto3" json:"load_average,omitempty"`
-	// CPU usage statistics
-	CpuUsage *CpuUsage `protobuf:"bytes,3,opt,name=cpu_usage,json=cpuUsage,proto3" json:"cpu_usage,omitempty"`
-	// Disk usage information
-	DiskUsage []*DiskUsage `protobuf:"bytes,4,rep,name=disk_usage,json=diskUsage,proto3" json:"disk_usage,omitempty"`
-	// Network statistics
-	NetworkStats *NetworkStats `protobuf:"bytes,5,opt,name=network_stats,json=networkStats,proto3" json:"network_stats,omitempty"`
-	// Top network talkers
-	TopTalkers []*NetworkTalker `protobuf:"bytes,6,rep,name=top_talkers,json=topTalkers,proto3" json:"top_talkers,omitempty"`
-	// Listening sockets
-	ListeningSockets []*ListeningSocket `protobuf:"bytes,7,rep,name=listening_sockets,json=listeningSockets,proto3" json:"listening_sockets,omitempty"`
-	// TCP connection states
-	TcpConnectionStates *TcpConnectionStates `protobuf:"bytes,8,opt,name=tcp_connection_states,json=tcpConnectionStates,proto3" json:"tcp_connection_states,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
-}
-
-func (x *SystemStats) Reset() {
-	*x = SystemStats{}
+func (x *DiskUsages) Reset() {
+	*x = DiskUsages{}
 	mi := &file_api_v1_pulsecat_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SystemStats) String() string {
+func (x *DiskUsages) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SystemStats) ProtoMessage() {}
+func (*DiskUsages) ProtoMessage() {}
 
-func (x *SystemStats) ProtoReflect() protoreflect.Message {
+func (x *DiskUsages) ProtoReflect() protoreflect.Message {
 	mi := &file_api_v1_pulsecat_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -308,63 +419,102 @@ func (x *SystemStats) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SystemStats.ProtoReflect.Descriptor instead.
-func (*SystemStats) Descriptor() ([]byte, []int) {
+// Deprecated: Use DiskUsages.ProtoReflect.Descriptor instead.
+func (*DiskUsages) Descriptor() ([]byte, []int) {
 	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SystemStats) GetTimestamp() int64 {
+func (x *DiskUsages) GetDisks() []*DiskUsage {
 	if x != nil {
-		return x.Timestamp
-	}
-	return 0
-}
-
-func (x *SystemStats) GetLoadAverage() *LoadAverage {
-	if x != nil {
-		return x.LoadAverage
+		return x.Disks
 	}
 	return nil
 }
 
-func (x *SystemStats) GetCpuUsage() *CpuUsage {
+type NetworkTalkers struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Talkers       []*NetworkTalker       `protobuf:"bytes,1,rep,name=talkers,proto3" json:"talkers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkTalkers) Reset() {
+	*x = NetworkTalkers{}
+	mi := &file_api_v1_pulsecat_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkTalkers) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkTalkers) ProtoMessage() {}
+
+func (x *NetworkTalkers) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_pulsecat_proto_msgTypes[4]
 	if x != nil {
-		return x.CpuUsage
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkTalkers.ProtoReflect.Descriptor instead.
+func (*NetworkTalkers) Descriptor() ([]byte, []int) {
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *NetworkTalkers) GetTalkers() []*NetworkTalker {
+	if x != nil {
+		return x.Talkers
 	}
 	return nil
 }
 
-func (x *SystemStats) GetDiskUsage() []*DiskUsage {
-	if x != nil {
-		return x.DiskUsage
-	}
-	return nil
+type ListeningSockets struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sockets       []*ListeningSocket     `protobuf:"bytes,1,rep,name=sockets,proto3" json:"sockets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SystemStats) GetNetworkStats() *NetworkStats {
-	if x != nil {
-		return x.NetworkStats
-	}
-	return nil
+func (x *ListeningSockets) Reset() {
+	*x = ListeningSockets{}
+	mi := &file_api_v1_pulsecat_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
-func (x *SystemStats) GetTopTalkers() []*NetworkTalker {
-	if x != nil {
-		return x.TopTalkers
-	}
-	return nil
+func (x *ListeningSockets) String() string {
+	return protoimpl.X.MessageStringOf(x)
 }
 
-func (x *SystemStats) GetListeningSockets() []*ListeningSocket {
+func (*ListeningSockets) ProtoMessage() {}
+
+func (x *ListeningSockets) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_pulsecat_proto_msgTypes[5]
 	if x != nil {
-		return x.ListeningSockets
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	return nil
+	return mi.MessageOf(x)
 }
 
-func (x *SystemStats) GetTcpConnectionStates() *TcpConnectionStates {
+// Deprecated: Use ListeningSockets.ProtoReflect.Descriptor instead.
+func (*ListeningSockets) Descriptor() ([]byte, []int) {
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListeningSockets) GetSockets() []*ListeningSocket {
 	if x != nil {
-		return x.TcpConnectionStates
+		return x.Sockets
 	}
 	return nil
 }
@@ -381,7 +531,7 @@ type LoadAverage struct {
 
 func (x *LoadAverage) Reset() {
 	*x = LoadAverage{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[4]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +543,7 @@ func (x *LoadAverage) String() string {
 func (*LoadAverage) ProtoMessage() {}
 
 func (x *LoadAverage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[4]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +556,7 @@ func (x *LoadAverage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoadAverage.ProtoReflect.Descriptor instead.
 func (*LoadAverage) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{4}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *LoadAverage) GetOneMin() float64 {
@@ -448,7 +598,7 @@ type CpuUsage struct {
 
 func (x *CpuUsage) Reset() {
 	*x = CpuUsage{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[5]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +610,7 @@ func (x *CpuUsage) String() string {
 func (*CpuUsage) ProtoMessage() {}
 
 func (x *CpuUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[5]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +623,7 @@ func (x *CpuUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CpuUsage.ProtoReflect.Descriptor instead.
 func (*CpuUsage) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{5}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CpuUsage) GetUser() float64 {
@@ -557,7 +707,7 @@ type DiskUsage struct {
 
 func (x *DiskUsage) Reset() {
 	*x = DiskUsage{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[6]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -569,7 +719,7 @@ func (x *DiskUsage) String() string {
 func (*DiskUsage) ProtoMessage() {}
 
 func (x *DiskUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[6]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -582,7 +732,7 @@ func (x *DiskUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiskUsage.ProtoReflect.Descriptor instead.
 func (*DiskUsage) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{6}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DiskUsage) GetFilesystem() string {
@@ -665,7 +815,7 @@ type NetworkStats struct {
 
 func (x *NetworkStats) Reset() {
 	*x = NetworkStats{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +827,7 @@ func (x *NetworkStats) String() string {
 func (*NetworkStats) ProtoMessage() {}
 
 func (x *NetworkStats) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +840,7 @@ func (x *NetworkStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStats.ProtoReflect.Descriptor instead.
 func (*NetworkStats) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{7}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *NetworkStats) GetTotalBytesReceived() uint64 {
@@ -765,7 +915,7 @@ type NetworkTalker struct {
 
 func (x *NetworkTalker) Reset() {
 	*x = NetworkTalker{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[8]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -777,7 +927,7 @@ func (x *NetworkTalker) String() string {
 func (*NetworkTalker) ProtoMessage() {}
 
 func (x *NetworkTalker) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[8]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -790,7 +940,7 @@ func (x *NetworkTalker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkTalker.ProtoReflect.Descriptor instead.
 func (*NetworkTalker) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{8}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *NetworkTalker) GetIdentifier() isNetworkTalker_Identifier {
@@ -859,7 +1009,7 @@ type ProtocolTalker struct {
 
 func (x *ProtocolTalker) Reset() {
 	*x = ProtocolTalker{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[9]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +1021,7 @@ func (x *ProtocolTalker) String() string {
 func (*ProtocolTalker) ProtoMessage() {}
 
 func (x *ProtocolTalker) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[9]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +1034,7 @@ func (x *ProtocolTalker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtocolTalker.ProtoReflect.Descriptor instead.
 func (*ProtocolTalker) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{9}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProtocolTalker) GetProtocol() string {
@@ -915,7 +1065,7 @@ type ConnectionTalker struct {
 
 func (x *ConnectionTalker) Reset() {
 	*x = ConnectionTalker{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[10]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1077,7 @@ func (x *ConnectionTalker) String() string {
 func (*ConnectionTalker) ProtoMessage() {}
 
 func (x *ConnectionTalker) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[10]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1090,7 @@ func (x *ConnectionTalker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionTalker.ProtoReflect.Descriptor instead.
 func (*ConnectionTalker) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{10}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ConnectionTalker) GetSourceIp() string {
@@ -993,7 +1143,7 @@ type ListeningSocket struct {
 
 func (x *ListeningSocket) Reset() {
 	*x = ListeningSocket{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[11]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1005,7 +1155,7 @@ func (x *ListeningSocket) String() string {
 func (*ListeningSocket) ProtoMessage() {}
 
 func (x *ListeningSocket) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[11]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1018,7 +1168,7 @@ func (x *ListeningSocket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListeningSocket.ProtoReflect.Descriptor instead.
 func (*ListeningSocket) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{11}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListeningSocket) GetCommand() string {
@@ -1083,7 +1233,7 @@ type TcpConnectionStates struct {
 
 func (x *TcpConnectionStates) Reset() {
 	*x = TcpConnectionStates{}
-	mi := &file_api_v1_pulsecat_proto_msgTypes[12]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1095,7 +1245,7 @@ func (x *TcpConnectionStates) String() string {
 func (*TcpConnectionStates) ProtoMessage() {}
 
 func (x *TcpConnectionStates) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_pulsecat_proto_msgTypes[12]
+	mi := &file_api_v1_pulsecat_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1108,7 +1258,7 @@ func (x *TcpConnectionStates) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TcpConnectionStates.ProtoReflect.Descriptor instead.
 func (*TcpConnectionStates) Descriptor() ([]byte, []int) {
-	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{12}
+	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TcpConnectionStates) GetEstablished() uint32 {
@@ -1192,31 +1342,35 @@ var File_api_v1_pulsecat_proto protoreflect.FileDescriptor
 
 const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\n" +
-	"\x15api/v1/pulsecat.proto\x12\vpulsecat.v1\"\x87\x01\n" +
+	"\x15api/v1/pulsecat.proto\x12\vpulsecat.v1\"\x8b\x01\n" +
 	"\x10SubscribeRequest\x12\x1f\n" +
 	"\vstart_delay\x18\x01 \x01(\rR\n" +
 	"startDelay\x12\x1c\n" +
-	"\tfrequency\x18\x02 \x01(\rR\tfrequency\x124\n" +
+	"\tfrequency\x18\x02 \x01(\rR\tfrequency\x128\n" +
+	"\vmetric_type\x18\x03 \x01(\x0e2\x17.pulsecat.v1.MetricTypeR\n" +
+	"metricType\"\xb5\x04\n" +
+	"\vMetricPulse\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12'\n" +
+	"\x04meow\x18\x02 \x01(\v2\x11.pulsecat.v1.MeowH\x00R\x04meow\x12=\n" +
+	"\fload_average\x18\x03 \x01(\v2\x18.pulsecat.v1.LoadAverageH\x00R\vloadAverage\x124\n" +
+	"\tcpu_usage\x18\x04 \x01(\v2\x15.pulsecat.v1.CpuUsageH\x00R\bcpuUsage\x128\n" +
 	"\n" +
-	"stat_types\x18\x03 \x03(\x0e2\x15.pulsecat.v1.StatTypeR\tstatTypes\"L\n" +
-	"\vMeowRequest\x12\x1f\n" +
-	"\vstart_delay\x18\x01 \x01(\rR\n" +
-	"startDelay\x12\x1c\n" +
-	"\tfrequency\x18\x02 \x01(\rR\tfrequency\"F\n" +
-	"\fMeowResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"\xf1\x03\n" +
-	"\vSystemStats\x12\x1c\n" +
-	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12;\n" +
-	"\fload_average\x18\x02 \x01(\v2\x18.pulsecat.v1.LoadAverageR\vloadAverage\x122\n" +
-	"\tcpu_usage\x18\x03 \x01(\v2\x15.pulsecat.v1.CpuUsageR\bcpuUsage\x125\n" +
+	"disk_usage\x18\x05 \x01(\v2\x17.pulsecat.v1.DiskUsagesH\x00R\tdiskUsage\x12@\n" +
+	"\rnetwork_stats\x18\x06 \x01(\v2\x19.pulsecat.v1.NetworkStatsH\x00R\fnetworkStats\x12>\n" +
+	"\vtop_talkers\x18\a \x01(\v2\x1b.pulsecat.v1.NetworkTalkersH\x00R\n" +
+	"topTalkers\x12L\n" +
+	"\x11listening_sockets\x18\b \x01(\v2\x1d.pulsecat.v1.ListeningSocketsH\x00R\x10listeningSockets\x12V\n" +
+	"\x15tcp_connection_states\x18\t \x01(\v2 .pulsecat.v1.TcpConnectionStatesH\x00R\x13tcpConnectionStatesB\b\n" +
+	"\x06metric\" \n" +
+	"\x04Meow\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\":\n" +
 	"\n" +
-	"disk_usage\x18\x04 \x03(\v2\x16.pulsecat.v1.DiskUsageR\tdiskUsage\x12>\n" +
-	"\rnetwork_stats\x18\x05 \x01(\v2\x19.pulsecat.v1.NetworkStatsR\fnetworkStats\x12;\n" +
-	"\vtop_talkers\x18\x06 \x03(\v2\x1a.pulsecat.v1.NetworkTalkerR\n" +
-	"topTalkers\x12I\n" +
-	"\x11listening_sockets\x18\a \x03(\v2\x1c.pulsecat.v1.ListeningSocketR\x10listeningSockets\x12T\n" +
-	"\x15tcp_connection_states\x18\b \x01(\v2 .pulsecat.v1.TcpConnectionStatesR\x13tcpConnectionStates\"b\n" +
+	"DiskUsages\x12,\n" +
+	"\x05disks\x18\x01 \x03(\v2\x16.pulsecat.v1.DiskUsageR\x05disks\"F\n" +
+	"\x0eNetworkTalkers\x124\n" +
+	"\atalkers\x18\x01 \x03(\v2\x1a.pulsecat.v1.NetworkTalkerR\atalkers\"J\n" +
+	"\x10ListeningSockets\x126\n" +
+	"\asockets\x18\x01 \x03(\v2\x1c.pulsecat.v1.ListeningSocketR\asockets\"b\n" +
 	"\vLoadAverage\x12\x17\n" +
 	"\aone_min\x18\x01 \x01(\x01R\x06oneMin\x12\x19\n" +
 	"\bfive_min\x18\x02 \x01(\x01R\afiveMin\x12\x1f\n" +
@@ -1298,19 +1452,20 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\blast_ack\x18\t \x01(\rR\alastAck\x12\x16\n" +
 	"\x06listen\x18\n" +
 	" \x01(\rR\x06listen\x12\x18\n" +
-	"\aclosing\x18\v \x01(\rR\aclosing*\xf2\x01\n" +
-	"\bStatType\x12\x19\n" +
-	"\x15STAT_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16STAT_TYPE_LOAD_AVERAGE\x10\x01\x12\x17\n" +
-	"\x13STAT_TYPE_CPU_USAGE\x10\x02\x12\x18\n" +
-	"\x14STAT_TYPE_DISK_USAGE\x10\x03\x12\x1b\n" +
-	"\x17STAT_TYPE_NETWORK_STATS\x10\x04\x12\x19\n" +
-	"\x15STAT_TYPE_TOP_TALKERS\x10\x05\x12\x1f\n" +
-	"\x1bSTAT_TYPE_LISTENING_SOCKETS\x10\x06\x12#\n" +
-	"\x1fSTAT_TYPE_TCP_CONNECTION_STATES\x10\a2\x95\x01\n" +
+	"\aclosing\x18\v \x01(\rR\aclosing*\x9a\x02\n" +
+	"\n" +
+	"MetricType\x12\x1b\n" +
+	"\x17METRIC_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10METRIC_TYPE_MEOW\x10\x01\x12\x1c\n" +
+	"\x18METRIC_TYPE_LOAD_AVERAGE\x10\x02\x12\x19\n" +
+	"\x15METRIC_TYPE_CPU_USAGE\x10\x03\x12\x1a\n" +
+	"\x16METRIC_TYPE_DISK_USAGE\x10\x04\x12\x1d\n" +
+	"\x19METRIC_TYPE_NETWORK_STATS\x10\x05\x12\x1b\n" +
+	"\x17METRIC_TYPE_TOP_TALKERS\x10\x06\x12!\n" +
+	"\x1dMETRIC_TYPE_LISTENING_SOCKETS\x10\a\x12%\n" +
+	"!METRIC_TYPE_TCP_CONNECTION_STATES\x10\b2T\n" +
 	"\bPulseCat\x12H\n" +
-	"\tSubscribe\x12\x1d.pulsecat.v1.SubscribeRequest\x1a\x18.pulsecat.v1.SystemStats\"\x000\x01\x12?\n" +
-	"\x04Meow\x12\x18.pulsecat.v1.MeowRequest\x1a\x19.pulsecat.v1.MeowResponse\"\x000\x01B\x11Z\x0fpulsecat/api/v1b\x06proto3"
+	"\tSubscribe\x12\x1d.pulsecat.v1.SubscribeRequest\x1a\x18.pulsecat.v1.MetricPulse\"\x000\x01B\x11Z\x0fpulsecat/api/v1b\x06proto3"
 
 var (
 	file_api_v1_pulsecat_proto_rawDescOnce sync.Once
@@ -1325,43 +1480,47 @@ func file_api_v1_pulsecat_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_pulsecat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_v1_pulsecat_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_api_v1_pulsecat_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_api_v1_pulsecat_proto_goTypes = []any{
-	(StatType)(0),               // 0: pulsecat.v1.StatType
+	(MetricType)(0),             // 0: pulsecat.v1.MetricType
 	(*SubscribeRequest)(nil),    // 1: pulsecat.v1.SubscribeRequest
-	(*MeowRequest)(nil),         // 2: pulsecat.v1.MeowRequest
-	(*MeowResponse)(nil),        // 3: pulsecat.v1.MeowResponse
-	(*SystemStats)(nil),         // 4: pulsecat.v1.SystemStats
-	(*LoadAverage)(nil),         // 5: pulsecat.v1.LoadAverage
-	(*CpuUsage)(nil),            // 6: pulsecat.v1.CpuUsage
-	(*DiskUsage)(nil),           // 7: pulsecat.v1.DiskUsage
-	(*NetworkStats)(nil),        // 8: pulsecat.v1.NetworkStats
-	(*NetworkTalker)(nil),       // 9: pulsecat.v1.NetworkTalker
-	(*ProtocolTalker)(nil),      // 10: pulsecat.v1.ProtocolTalker
-	(*ConnectionTalker)(nil),    // 11: pulsecat.v1.ConnectionTalker
-	(*ListeningSocket)(nil),     // 12: pulsecat.v1.ListeningSocket
-	(*TcpConnectionStates)(nil), // 13: pulsecat.v1.TcpConnectionStates
+	(*MetricPulse)(nil),         // 2: pulsecat.v1.MetricPulse
+	(*Meow)(nil),                // 3: pulsecat.v1.Meow
+	(*DiskUsages)(nil),          // 4: pulsecat.v1.DiskUsages
+	(*NetworkTalkers)(nil),      // 5: pulsecat.v1.NetworkTalkers
+	(*ListeningSockets)(nil),    // 6: pulsecat.v1.ListeningSockets
+	(*LoadAverage)(nil),         // 7: pulsecat.v1.LoadAverage
+	(*CpuUsage)(nil),            // 8: pulsecat.v1.CpuUsage
+	(*DiskUsage)(nil),           // 9: pulsecat.v1.DiskUsage
+	(*NetworkStats)(nil),        // 10: pulsecat.v1.NetworkStats
+	(*NetworkTalker)(nil),       // 11: pulsecat.v1.NetworkTalker
+	(*ProtocolTalker)(nil),      // 12: pulsecat.v1.ProtocolTalker
+	(*ConnectionTalker)(nil),    // 13: pulsecat.v1.ConnectionTalker
+	(*ListeningSocket)(nil),     // 14: pulsecat.v1.ListeningSocket
+	(*TcpConnectionStates)(nil), // 15: pulsecat.v1.TcpConnectionStates
 }
 var file_api_v1_pulsecat_proto_depIdxs = []int32{
-	0,  // 0: pulsecat.v1.SubscribeRequest.stat_types:type_name -> pulsecat.v1.StatType
-	5,  // 1: pulsecat.v1.SystemStats.load_average:type_name -> pulsecat.v1.LoadAverage
-	6,  // 2: pulsecat.v1.SystemStats.cpu_usage:type_name -> pulsecat.v1.CpuUsage
-	7,  // 3: pulsecat.v1.SystemStats.disk_usage:type_name -> pulsecat.v1.DiskUsage
-	8,  // 4: pulsecat.v1.SystemStats.network_stats:type_name -> pulsecat.v1.NetworkStats
-	9,  // 5: pulsecat.v1.SystemStats.top_talkers:type_name -> pulsecat.v1.NetworkTalker
-	12, // 6: pulsecat.v1.SystemStats.listening_sockets:type_name -> pulsecat.v1.ListeningSocket
-	13, // 7: pulsecat.v1.SystemStats.tcp_connection_states:type_name -> pulsecat.v1.TcpConnectionStates
-	10, // 8: pulsecat.v1.NetworkTalker.protocol:type_name -> pulsecat.v1.ProtocolTalker
-	11, // 9: pulsecat.v1.NetworkTalker.connection:type_name -> pulsecat.v1.ConnectionTalker
-	1,  // 10: pulsecat.v1.PulseCat.Subscribe:input_type -> pulsecat.v1.SubscribeRequest
-	2,  // 11: pulsecat.v1.PulseCat.Meow:input_type -> pulsecat.v1.MeowRequest
-	4,  // 12: pulsecat.v1.PulseCat.Subscribe:output_type -> pulsecat.v1.SystemStats
-	3,  // 13: pulsecat.v1.PulseCat.Meow:output_type -> pulsecat.v1.MeowResponse
-	12, // [12:14] is the sub-list for method output_type
-	10, // [10:12] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	0,  // 0: pulsecat.v1.SubscribeRequest.metric_type:type_name -> pulsecat.v1.MetricType
+	3,  // 1: pulsecat.v1.MetricPulse.meow:type_name -> pulsecat.v1.Meow
+	7,  // 2: pulsecat.v1.MetricPulse.load_average:type_name -> pulsecat.v1.LoadAverage
+	8,  // 3: pulsecat.v1.MetricPulse.cpu_usage:type_name -> pulsecat.v1.CpuUsage
+	4,  // 4: pulsecat.v1.MetricPulse.disk_usage:type_name -> pulsecat.v1.DiskUsages
+	10, // 5: pulsecat.v1.MetricPulse.network_stats:type_name -> pulsecat.v1.NetworkStats
+	5,  // 6: pulsecat.v1.MetricPulse.top_talkers:type_name -> pulsecat.v1.NetworkTalkers
+	6,  // 7: pulsecat.v1.MetricPulse.listening_sockets:type_name -> pulsecat.v1.ListeningSockets
+	15, // 8: pulsecat.v1.MetricPulse.tcp_connection_states:type_name -> pulsecat.v1.TcpConnectionStates
+	9,  // 9: pulsecat.v1.DiskUsages.disks:type_name -> pulsecat.v1.DiskUsage
+	11, // 10: pulsecat.v1.NetworkTalkers.talkers:type_name -> pulsecat.v1.NetworkTalker
+	14, // 11: pulsecat.v1.ListeningSockets.sockets:type_name -> pulsecat.v1.ListeningSocket
+	12, // 12: pulsecat.v1.NetworkTalker.protocol:type_name -> pulsecat.v1.ProtocolTalker
+	13, // 13: pulsecat.v1.NetworkTalker.connection:type_name -> pulsecat.v1.ConnectionTalker
+	1,  // 14: pulsecat.v1.PulseCat.Subscribe:input_type -> pulsecat.v1.SubscribeRequest
+	2,  // 15: pulsecat.v1.PulseCat.Subscribe:output_type -> pulsecat.v1.MetricPulse
+	15, // [15:16] is the sub-list for method output_type
+	14, // [14:15] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_pulsecat_proto_init() }
@@ -1369,7 +1528,17 @@ func file_api_v1_pulsecat_proto_init() {
 	if File_api_v1_pulsecat_proto != nil {
 		return
 	}
-	file_api_v1_pulsecat_proto_msgTypes[8].OneofWrappers = []any{
+	file_api_v1_pulsecat_proto_msgTypes[1].OneofWrappers = []any{
+		(*MetricPulse_Meow)(nil),
+		(*MetricPulse_LoadAverage)(nil),
+		(*MetricPulse_CpuUsage)(nil),
+		(*MetricPulse_DiskUsage)(nil),
+		(*MetricPulse_NetworkStats)(nil),
+		(*MetricPulse_TopTalkers)(nil),
+		(*MetricPulse_ListeningSockets)(nil),
+		(*MetricPulse_TcpConnectionStates)(nil),
+	}
+	file_api_v1_pulsecat_proto_msgTypes[10].OneofWrappers = []any{
 		(*NetworkTalker_Protocol)(nil),
 		(*NetworkTalker_Connection)(nil),
 	}
@@ -1379,7 +1548,7 @@ func file_api_v1_pulsecat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_pulsecat_proto_rawDesc), len(file_api_v1_pulsecat_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

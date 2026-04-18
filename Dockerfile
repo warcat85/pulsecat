@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags="-w -s -X main.Version=${VERSION:-dev} \
     -X main.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S') \
     -X main.CommitHash=${COMMIT_HASH:-unknown}" \
-    -o /app/pulsecat .
+    -o /app/pulsecat ./cmd/pulsecat
 
 # Runtime stage - using scratch (minimal) with just the binary
 FROM scratch
