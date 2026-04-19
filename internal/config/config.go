@@ -64,7 +64,7 @@ func (m MonitorsConfig) Count() int {
 	return count
 }
 
-// IsEmpty returns true if no monitors are enabled
+// returns true if no monitors are enabled
 func (m MonitorsConfig) IsEmpty() bool {
 	return m.Count() == 0
 }

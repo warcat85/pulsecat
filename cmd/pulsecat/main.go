@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"pulsecat/app"
+	"pulsecat/internal/app"
 	"pulsecat/internal/config"
 	"syscall"
 )

@@ -28,7 +28,7 @@ var (
 	version    = flag.Bool("version", false, "Print version and exit")
 )
 
-// Version information set by build flags
+// information set by build flags
 var (
 	Version    = "dev"
 	BuildTime  = "unknown"

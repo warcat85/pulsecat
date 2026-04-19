@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"pulsecat/internal/collector"
 	"pulsecat/internal/config"
 	"sync"
 	"time"
@@ -14,31 +15,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Server implements the PulseCatServer interface.
+// implements the PulseCatServer interface.
 type Server struct {
 	v1.UnimplementedPulseCatServer
 	config *config.Config
 
 	mu sync.RWMutex
-
-	// Individual metric data (simulated)
-	loadAverage         *v1.LoadAverage
-	cpuUsage            *v1.CpuUsage
-	diskUsages          []*v1.DiskUsage
-	networkStats        *v1.NetworkStats
-	topTalkers          []*v1.NetworkTalker
-	listeningSockets    []*v1.ListeningSocket
-	tcpConnectionStates *v1.TcpConnectionStates
 }
 
-// New creates a new gRPC server instance.
+// creates a new gRPC server instance.
 func New(config *config.Config) *Server {
 	return &Server{
 		config: config,
 	}
 }
 
-// Subscribe implements the gRPC streaming endpoint.
+// implements the gRPC streaming endpoint.
 func (s *Server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_SubscribeServer) error {
 	ctx := stream.Context()
 
@@ -114,9 +106,6 @@ func (s *Server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_Subscrib
 
 // createMetricPulse creates a MetricPulse message for the requested metric type.
 func (s *Server) createMetricPulse(metricType v1.MetricType) (*v1.MetricPulse, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	pulse := &v1.MetricPulse{
 		Timestamp: time.Now().Unix(),
 	}
@@ -129,163 +118,101 @@ func (s *Server) createMetricPulse(metricType v1.MetricType) (*v1.MetricPulse, e
 			},
 		}
 	case v1.MetricType_METRIC_TYPE_LOAD_AVERAGE:
-		if s.loadAverage == nil {
-			return nil, fmt.Errorf("load average data not available")
+		c := collector.NewDummyLoadAverageCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("load average collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.LoadAverage)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from load average collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_LoadAverage{
-			LoadAverage: s.loadAverage,
+			LoadAverage: ConvertLoadAverage(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_CPU_USAGE:
-		if s.cpuUsage == nil {
-			return nil, fmt.Errorf("CPU usage data not available")
+		c := collector.NewDummyCpuUsageCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("CPU usage collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.CpuUsage)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from CPU usage collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_CpuUsage{
-			CpuUsage: s.cpuUsage,
+			CpuUsage: ConvertCpuUsage(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_DISK_USAGE:
-		if s.diskUsages == nil {
-			return nil, fmt.Errorf("disk usage data not available")
+		c := collector.NewDummyDiskUsageCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("disk usage collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.DiskUsages)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from disk usage collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_DiskUsage{
-			DiskUsage: &v1.DiskUsages{
-				Disks: s.diskUsages,
-			},
+			DiskUsage: ConvertDiskUsagesToProto(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_NETWORK_STATS:
-		if s.networkStats == nil {
-			return nil, fmt.Errorf("network stats data not available")
+		c := collector.NewDummyNetworkStatsCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("network stats collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.NetworkStats)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from network stats collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_NetworkStats{
-			NetworkStats: s.networkStats,
+			NetworkStats: ConvertNetworkStats(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_TOP_TALKERS:
-		if s.topTalkers == nil {
-			return nil, fmt.Errorf("top talkers data not available")
+		c := collector.NewDummyTopTalkersCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("top talkers collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.NetworkTalkers)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from top talkers collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_TopTalkers{
-			TopTalkers: &v1.NetworkTalkers{
-				Talkers: s.topTalkers,
-			},
+			TopTalkers: ConvertNetworkTalkers(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_LISTENING_SOCKETS:
-		if s.listeningSockets == nil {
-			return nil, fmt.Errorf("listening sockets data not available")
+		c := collector.NewDummyListeningSocketsCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("listening sockets collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.ListeningSockets)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from listening sockets collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_ListeningSockets{
-			ListeningSockets: &v1.ListeningSockets{
-				Sockets: s.listeningSockets,
-			},
+			ListeningSockets: ConvertListeningSockets(internalData),
 		}
 	case v1.MetricType_METRIC_TYPE_TCP_CONNECTION_STATES:
-		if s.tcpConnectionStates == nil {
-			return nil, fmt.Errorf("TCP connection states data not available")
+		c := collector.NewDummyTcpConnectionStatesCollector()
+		data, err := c.Collect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("TCP connection states collection failed: %w", err)
+		}
+		internalData, ok := data.(*collector.TcpConnectionStates)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from TCP connection states collector: %T", data)
 		}
 		pulse.Metric = &v1.MetricPulse_TcpConnectionStates{
-			TcpConnectionStates: s.tcpConnectionStates,
+			TcpConnectionStates: ConvertTcpConnectionStates(internalData),
 		}
 	default:
 		return nil, fmt.Errorf("unsupported metric type: %v", metricType)
 	}
 
 	return pulse, nil
-}
-
-// CollectStatistics collects system statistics and updates server fields (simulated).
-func (s *Server) CollectStatistics() {
-	// TODO: Implement actual system statistics collection
-	// For now, generate placeholder data with some variation to simulate real data
-
-	now := time.Now()
-	second := now.Second()
-
-	// Simulate some data variation
-	baseLoad := 0.1 + float64(second%30)*0.01
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Update individual metric fields
-	s.loadAverage = &v1.LoadAverage{
-		OneMin:     baseLoad,
-		FiveMin:    baseLoad * 0.9,
-		FifteenMin: baseLoad * 0.8,
-	}
-
-	s.cpuUsage = &v1.CpuUsage{
-		User:   10.5 + float64(second%10),
-		System: 5.2 + float64(second%5),
-		Idle:   84.3 - float64(second%15),
-	}
-
-	s.diskUsages = []*v1.DiskUsage{
-		{
-			Filesystem:  "/dev/sda1",
-			TotalMb:     102400,
-			UsedMb:      51200 + uint64(second%100),
-			UsedPercent: 50.0 + float64(second%10)*0.1,
-			MountPoint:  "/",
-		},
-	}
-
-	s.networkStats = &v1.NetworkStats{
-		TotalBytesReceived: 1000000 + uint64(second%1000)*1000,
-		TotalBytesSent:     500000 + uint64(second%500)*1000,
-	}
-
-	s.topTalkers = []*v1.NetworkTalker{
-		{
-			Identifier: &v1.NetworkTalker_Protocol{
-				Protocol: &v1.ProtocolTalker{
-					Protocol: "TCP",
-					Port:     80,
-				},
-			},
-			BytesPerSecond: 100000 + uint64(second%10000),
-			Percentage:     80.0 + float64(second%5),
-		},
-	}
-
-	s.listeningSockets = []*v1.ListeningSocket{
-		{
-			Command:  "sshd",
-			Pid:      1234,
-			User:     "root",
-			Protocol: "tcp",
-			Port:     22,
-			Address:  "0.0.0.0",
-		},
-	}
-
-	s.tcpConnectionStates = &v1.TcpConnectionStates{
-		Established: 10 + uint32(second%5),
-		Listen:      5,
-	}
-
-	if s.config.LogLevel == "debug" {
-		log.Printf("Collected statistics: CPU User=%.1f%%, System=%.1f%%, Idle=%.1f%%",
-			s.cpuUsage.User, s.cpuUsage.System, s.cpuUsage.Idle)
-	}
-}
-
-// StartStatsCollection starts periodic statistics collection.
-func (s *Server) StartStatsCollection(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			s.CollectStatistics()
-
-			if s.config.LogLevel == "debug" {
-				log.Printf("Updated system statistics at %v", time.Now().Format(time.RFC3339))
-			}
-
-		case <-ctx.Done():
-			log.Println("Stopping statistics collection")
-			return
-		}
-	}
 }
 
 func (s *Server) Run(stopCh chan struct{}) error {

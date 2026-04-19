@@ -102,7 +102,7 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
-// PrintUsage prints the command-line usage information
+// prints the command-line usage information
 func PrintUsage() {
 	programName := filepath.Base(os.Args[0])
 	fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", programName)
