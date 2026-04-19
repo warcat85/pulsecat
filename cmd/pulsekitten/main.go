@@ -20,8 +20,8 @@ import (
 
 var (
 	serverAddr = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
-	startDelay = flag.Uint("delay", 0, "Start delay in seconds (M parameter)")
-	frequency  = flag.Uint("frequency", 1, "Frequency in seconds between snapshots (N parameter)")
+	startDelay = flag.Uint("delay", 0, "Start delay (in seconds)")
+	frequency  = flag.Uint("frequency", 1, "Frequency between snapshots (in seconds)")
 	metricType = flag.String("metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
 	duration   = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
 	verbose    = flag.Bool("verbose", false, "Enable verbose output")
@@ -90,7 +90,7 @@ func printMetricPulse(pulse *v1.MetricPulse) {
 			if i >= 3 {
 				break
 			}
-			fmt.Printf("  %d. %.0f bps (%.1f%%)\n", i+1, tt.BytesPerSecond, tt.Percentage)
+			fmt.Printf("  %d. %d bps (%.1f%%)\n", i+1, tt.BytesPerSecond, tt.Percentage)
 		}
 	case *v1.MetricPulse_ListeningSockets:
 		sockets := metric.ListeningSockets.Sockets
@@ -111,10 +111,8 @@ func printMetricPulse(pulse *v1.MetricPulse) {
 }
 
 func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
-	// Parse metric type
 	metric := parseMetricType(*metricType)
 
-	// Create subscription request
 	req := &v1.SubscribeRequest{
 		StartDelay: uint32(*startDelay),
 		Frequency:  uint32(*frequency),
@@ -183,7 +181,6 @@ func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
 }
 
 func runClient(ctx context.Context) error {
-	// Set up connection
 	conn, err := grpc.NewClient(*serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to connect to server: %v", err)
@@ -192,7 +189,6 @@ func runClient(ctx context.Context) error {
 
 	client := v1.NewPulseCatClient(conn)
 
-	// Handle subscription (unified for all metric types including meow)
 	return runSubscription(ctx, client)
 }
 
