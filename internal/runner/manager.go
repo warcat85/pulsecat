@@ -14,7 +14,7 @@ type Manager struct {
 	wg      sync.WaitGroup
 }
 
-// creates a new collector runner
+// creates a new collector runner.
 func NewManager() *Manager {
 	return &Manager{
 		runners: make(metrics.MetricMap[*Runner]),
@@ -52,8 +52,8 @@ func (m *Manager) Start(ctx context.Context) {
 // halts all collectors and waits for them to finish.
 func (m *Manager) Stop() {
 	m.mu.Lock()
-	for _, collector := range m.runners {
-		collector.Stop()
+	for _, runner := range m.runners {
+		runner.Stop()
 	}
 	m.mu.Unlock()
 

@@ -30,7 +30,7 @@ func NewDummyListeningSocketsCollector() Collector {
 
 // returns the metric type for listening sockets.
 func (c *DummyListeningSocketsCollector) Type() metrics.MetricType {
-	return metrics.LISTENING_SOCKETS
+	return metrics.ListeningSockets
 }
 
 // returns a human-readable name for this collector.
@@ -39,8 +39,7 @@ func (c *DummyListeningSocketsCollector) Name() string {
 }
 
 // returns a simulated listening sockets snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyListeningSocketsCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyListeningSocketsCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	return &ListeningSockets{
 		Sockets: []*ListeningSocket{
 			{

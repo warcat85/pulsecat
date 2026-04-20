@@ -3,30 +3,33 @@ package collector
 import (
 	"context"
 	"pulsecat/internal/metrics"
-	v1 "pulsecat/pkg/api/v1"
 )
+
+type Meow struct {
+	Message string
+}
 
 // MeowCollector is a collector that returns a Meow message.
 type MeowCollector struct{}
 
 // NewMeowCollector creates a new MeowCollector.
-func NewMeowCollector() *MeowCollector {
+func NewMeowCollector() Collector {
 	return &MeowCollector{}
 }
 
 // Type returns the metric type for Meow.
 func (c *MeowCollector) Type() metrics.MetricType {
-	return metrics.MEOW
+	return metrics.Meow
 }
 
 // Name returns the human-readable name.
 func (c *MeowCollector) Name() string {
-	return metrics.MEOW.String()
+	return metrics.Meow.String()
 }
 
 // Collect returns a Meow message.
-func (c *MeowCollector) Collect(ctx context.Context) (any, error) {
-	return &v1.Meow{
+func (c *MeowCollector) Collect(_ context.Context) (metrics.Sample, error) {
+	return &Meow{
 		Message: "Meow!",
 	}, nil
 }

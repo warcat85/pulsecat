@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"pulsecat/internal/metrics"
-	v1 "pulsecat/pkg/api/v1"
 )
 
 type Collector interface {
@@ -14,7 +13,7 @@ type Collector interface {
 	Name() string
 	// performs a single collection cycle and returns a snapshot.
 	// The returned data must be of the appropriate type
-	Collect(context.Context) (any, error)
+	Collect(context.Context) (metrics.Sample, error)
 }
 
 // a dummy collector that logs collection events.
@@ -31,27 +30,27 @@ func NewDummyCollector(metricType metrics.MetricType) Collector {
 
 func (c *DummyCollector) Type() metrics.MetricType { return c.metricType }
 func (c *DummyCollector) Name() string             { return c.metricType.String() }
-func (c *DummyCollector) Collect(context.Context) (any, error) {
+func (c *DummyCollector) Collect(context.Context) (metrics.Sample, error) {
 	log.Printf("Dummy collector %s collecting", c.Name())
 	// Return an empty struct appropriate for the metric type.
 	// This is just a placeholder; real collectors will return proper data.
 	switch c.metricType {
-	case metrics.LOAD_AVERAGE:
-		return &v1.LoadAverage{}, nil
-	case metrics.CPU_USAGE:
-		return &v1.CpuUsage{}, nil
-	case metrics.DISK_USAGE:
-		return &v1.DiskUsages{}, nil
-	case metrics.NETWORK_STATS:
-		return &v1.NetworkStats{}, nil
-	case metrics.TOP_TALKERS:
-		return &v1.NetworkTalkers{}, nil
-	case metrics.LISTENING_SOCKETS:
-		return &v1.ListeningSockets{}, nil
-	case metrics.TCP_CONNECTION_STATES:
-		return &v1.TcpConnectionStates{}, nil
-	case metrics.MEOW:
-		return &v1.Meow{Message: "Meow!"}, nil
+	case metrics.LoadAverage:
+		return &LoadAverage{}, nil
+	case metrics.CPUUsage:
+		return &CPUUsage{}, nil
+	case metrics.DiskUsage:
+		return &DiskUsages{}, nil
+	case metrics.NetworkStats:
+		return &NetworkStats{}, nil
+	case metrics.TopTalkers:
+		return &NetworkTalkers{}, nil
+	case metrics.ListeningSockets:
+		return &ListeningSockets{}, nil
+	case metrics.TCPConnectionStates:
+		return &TCPConnectionStates{}, nil
+	case metrics.Meow:
+		return &Meow{Message: "Meow!"}, nil
 	default:
 		return struct{}{}, nil
 	}

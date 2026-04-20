@@ -22,7 +22,7 @@ func NewDummyNetworkStatsCollector() Collector {
 
 // returns the metric type for network stats.
 func (c *DummyNetworkStatsCollector) Type() metrics.MetricType {
-	return metrics.NETWORK_STATS
+	return metrics.NetworkStats
 }
 
 // returns a human-readable name for this collector.
@@ -31,12 +31,11 @@ func (c *DummyNetworkStatsCollector) Name() string {
 }
 
 // returns a simulated network stats snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyNetworkStatsCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyNetworkStatsCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	now := time.Now()
 	second := now.Second()
 	return &NetworkStats{
-		TotalBytesReceived: 1000000 + uint64(second%1000)*1000,
-		TotalBytesSent:     500000 + uint64(second%500)*1000,
+		TotalBytesReceived: 1000000 + uint64(second%1000)*1000, //nolint:gosec // cannot be over 1000000
+		TotalBytesSent:     500000 + uint64(second%500)*1000,   //nolint:gosec // cannot be over 500000
 	}, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"pulsecat/internal/collector"
-	"pulsecat/internal/metrics"
 	"time"
 )
 
@@ -33,7 +32,7 @@ func (c *Runner) Consumer() Consumer {
 	return c.consumer
 }
 
-// runs the collection loop
+// runs the collection loop.
 func (c *Runner) Start(ctx context.Context) {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
@@ -51,10 +50,7 @@ func (c *Runner) Start(ctx context.Context) {
 				log.Printf("Collector %s failed: %v", c.collector.Name(), err)
 				continue
 			}
-			err = c.consumer.Consume(ctx, metrics.Sample{
-				Timestamp: time.Now(),
-				Data:      snapshot,
-			})
+			err = c.consumer.Consume(ctx, snapshot)
 			if err != nil {
 				log.Printf("Consumer failed: %v", err)
 				continue

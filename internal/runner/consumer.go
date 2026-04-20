@@ -15,6 +15,6 @@ func NewDummyConsumer() *DummyConsumer {
 	return &DummyConsumer{}
 }
 
-func (c *DummyConsumer) Consume(ctx context.Context, sample metrics.Sample) error {
+func (c *DummyConsumer) Consume(_ context.Context, _ metrics.Sample) error {
 	return nil
 }

@@ -3,14 +3,14 @@ package app
 import (
 	"context"
 	"log"
-	"pulsecat/internal/collector"
+	"pulsecat/internal/builder"
+	"pulsecat/internal/collector/average"
 	"pulsecat/internal/config"
-	"pulsecat/internal/metrics"
 	"pulsecat/internal/runner"
 	"pulsecat/internal/server"
 )
 
-// represents the system monitoring daemon
+// represents the system monitoring daemon.
 type Daemon struct {
 	config  *config.Config
 	server  *server.Server
@@ -20,42 +20,11 @@ type Daemon struct {
 }
 
 func NewDaemon(config *config.Config) *Daemon {
-	builder := NewBuilder(config)
+	builder := builder.NewBuilder(config)
 
-	collectors, manager := builder.BuildComponents()
-	collectors[metrics.MEOW] = collector.NewMeowCollector()
-	srv := server.New(config, collectors)
-	/*
-		manager := collector.NewManager()
+	storages, manager := builder.BuildComponents()
 
-		// Register placeholder collectors for enabled monitors
-		if config.Monitors.LoadAverage {
-			manager.Register(builder.BuildDummyRunner(metrics.LOAD_AVERAGE))
-		}
-		if config.Monitors.CPUUsage {
-			manager.Register(builder.BuildDummyRunner(metrics.CPU_USAGE))
-		}
-		if config.Monitors.DiskUsage {
-			manager.Register(builder.BuildDummyRunner(metrics.DISK_USAGE))
-		}
-		if config.Monitors.NetworkStats {
-			manager.Register(builder.BuildDummyRunner(metrics.NETWORK_STATS))
-		}
-		if config.Monitors.TopTalkers {
-			manager.Register(builder.BuildDummyRunner(metrics.TOP_TALKERS))
-		}
-		if config.Monitors.ListeningSockets {
-			manager.Register(builder.BuildDummyRunner(metrics.LISTENING_SOCKETS))
-		}
-		if config.Monitors.TCPConnectionStates {
-			manager.Register(builder.BuildDummyRunner(metrics.TCP_CONNECTION_STATES))
-		}*/
-	// Always register meow collector (it's a special metric)
-	/*
-		runner.Register(&collector.DummyCollector{
-			metricType: collector.MEOW,
-			name:       "meow",
-		})*/
+	srv := server.New(config, average.NewCollectorBuilder(storages))
 
 	return &Daemon{
 		config:  config,

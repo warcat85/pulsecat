@@ -20,41 +20,41 @@ monitors:
   # All monitors are enabled by default
   
   # System load averages (1min, 5min, 15min)
-  load_average: true
+  loadAverage: true
   
   # CPU usage statistics (user, system, idle, etc.)
-  cpu_usage: true
+  cpuUsage: true
   
   # Disk usage information for all filesystems
-  disk_usage: true
+  diskUsage: true
   
   # Network statistics (bytes sent/received, packets, errors)
-  network_stats: true
+  networkStats: true
   
   # Top network talkers by protocol/connection
-  top_talkers: true
+  topTalkers: true
   
   # Listening sockets information
-  listening_sockets: true
+  listeningSockets: true
   
   # TCP connection states counts
-  tcp_connection_states: true
+  tcpConnectionStates: true
 
 # Advanced settings (optional)
 advanced:
   # Statistics collection interval in seconds
   # Overrides the server frequency for internal collection
   # Set to 0 to use server frequency
-  collection_interval: 1
+  collectionInterval: 1
   
   # Maximum number of top talkers to track
-  max_top_talkers: 10
+  maxTopTalkers: 10
   
   # Network interface to monitor (empty for all)
-  network_interface: ""
+  networkInterface: ""
   
   # Filesystem paths to exclude from disk usage monitoring
-  exclude_filesystems:
+  excludeFilesystems:
     - "tmpfs"
     - "devtmpfs"
     - "proc"

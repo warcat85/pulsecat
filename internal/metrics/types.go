@@ -2,31 +2,30 @@ package metrics
 
 import (
 	"fmt"
-	"time"
 )
 
 type MetricType int
 
 const (
-	LOAD_AVERAGE MetricType = iota
-	CPU_USAGE
-	DISK_USAGE
-	NETWORK_STATS
-	TOP_TALKERS
-	LISTENING_SOCKETS
-	TCP_CONNECTION_STATES
-	MEOW
+	LoadAverage MetricType = iota
+	CPUUsage
+	DiskUsage
+	NetworkStats
+	TopTalkers
+	ListeningSockets
+	TCPConnectionStates
+	Meow
 )
 
 var metricNames = MetricMap[string]{
-	LOAD_AVERAGE:          "load_average",
-	CPU_USAGE:             "cpu_usage",
-	DISK_USAGE:            "disk_usage",
-	NETWORK_STATS:         "network_stats",
-	TOP_TALKERS:           "top_talkers",
-	LISTENING_SOCKETS:     "listening_sockets",
-	TCP_CONNECTION_STATES: "tcp_connection_states",
-	MEOW:                  "meow",
+	LoadAverage:         "load_average",
+	CPUUsage:            "cpu_usage",
+	DiskUsage:           "disk_usage",
+	NetworkStats:        "network_stats",
+	TopTalkers:          "top_talkers",
+	ListeningSockets:    "listening_sockets",
+	TCPConnectionStates: "tcp_connection_states",
+	Meow:                "meow",
 }
 
 func (t MetricType) String() string {
@@ -40,8 +39,9 @@ type (
 	MetricMap[T any] map[MetricType]T
 )
 
-// a single metric snapshot with its timestamp.
-type Sample struct {
-	Timestamp time.Time
-	Data      any // concrete type depends on metric type
-}
+// a single metric sample.
+type Sample any
+
+type Samples []Sample
+
+type AverageCalculator func(Samples) Sample

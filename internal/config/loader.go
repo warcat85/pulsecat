@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// parse command-line flags and YAML configuration file,
+// parse command-line flags and YAML configuration file.
 // merge them appropriately (flags override YAML).
 // Return the parsed configuration and any error.
 func LoadConfig() (*Config, error) {
@@ -19,9 +19,12 @@ func LoadConfig() (*Config, error) {
 	var configFile string
 
 	// Command-line flags (overrides config file)
-	flag.IntVar(&config.Port, "port", DefaultPort, "Port for gRPC server (overrides config file)")
-	flag.StringVar(&config.LogLevel, "log-level", DefaultLogLevel, "Log level (debug, info, warn, error) (overrides config file)")
-	flag.StringVar(&configFile, "config", "configs/config.yaml", "Path to YAML configuration file")
+	flag.IntVar(
+		&config.Port, "port", DefaultPort, "Port for gRPC server (overrides config file)")
+	flag.StringVar(
+		&config.LogLevel, "log-level", DefaultLogLevel, "Log level (debug, info, warn, error) (overrides config file)")
+	flag.StringVar(
+		&configFile, "config", "configs/config.yaml", "Path to YAML configuration file")
 
 	// Add help flag
 	help := flag.Bool("help", false, "Show help message")
@@ -32,59 +35,46 @@ func LoadConfig() (*Config, error) {
 		os.Exit(0)
 	}
 
-	// Track which flags were explicitly set
-	specifiedFlags := make(map[string]bool)
-	flag.Visit(func(f *flag.Flag) {
-		specifiedFlags[f.Name] = true
-	})
-
-	// Load configuration from YAML file if it exists
+	var portSpecified, logLevelSpecified bool
 	var yamlConfig *Config
+	// Load configuration from YAML file if it exists
 	if _, err := os.Stat(configFile); err == nil {
-		var err error
 		yamlConfig, err = loadFromFile(configFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load config from %s: %v", configFile, err)
+			return nil, fmt.Errorf("failed to load config from %s: %w", configFile, err)
 		}
-		// Merge YAML config with command-line flags (flags override YAML)
-		if yamlConfig != nil {
-			if !specifiedFlags["port"] {
-				config.Port = yamlConfig.Port
-			} else {
+		flag.Visit(func(f *flag.Flag) {
+			name := f.Name
+			if name == "port" {
 				log.Printf("Overriding port from config file with command-line value: %d", config.Port)
-			}
-			if !specifiedFlags["log-level"] {
-				config.LogLevel = yamlConfig.LogLevel
-			} else {
+				portSpecified = true
+			} else if name == "log-level" {
 				log.Printf("Overriding log level from config file with command-line value: %s", config.LogLevel)
+				logLevelSpecified = true
 			}
-			// use YAML value with validation
-			if yamlConfig.CollectionInterval <= 0 {
-				log.Printf("Invalid collection interval %d, using default %d", yamlConfig.CollectionInterval, DefaultCollectionInterval)
-				config.CollectionInterval = DefaultCollectionInterval
-			} else {
-				config.CollectionInterval = yamlConfig.CollectionInterval
-			}
-			// use YAML value with validation
-			if yamlConfig.BufferDuration <= 0 {
-				log.Printf("Invalid buffer duration %d, using default %d", yamlConfig.BufferDuration, DefaultBufferDuration)
-				config.BufferDuration = DefaultBufferDuration
-			} else {
-				config.BufferDuration = yamlConfig.BufferDuration
-			}
-			if yamlConfig.Monitors.IsEmpty() {
-				config.Monitors = allMonitors()
-				log.Printf("No monitor configuration found, enabling all monitors by default")
-			} else {
-				config.Monitors = yamlConfig.Monitors
-			}
-			log.Printf("Loaded configuration from %s", configFile)
+		})
+	}
+
+	// Merge YAML config with command-line flags (flags override YAML)
+	if yamlConfig != nil {
+		if !portSpecified {
+			config.Port = yamlConfig.Port
 		}
+		if !logLevelSpecified {
+			config.LogLevel = yamlConfig.LogLevel
+		}
+
+		// using validated YAML values
+		config.CollectionInterval = yamlConfig.CollectionInterval
+		config.BufferDuration = yamlConfig.BufferDuration
+		config.Monitors = yamlConfig.Monitors
+
+		log.Printf("Loaded configuration from %s", configFile)
 	} else {
-		log.Printf("Config file %s not found, using defaults and command-line flags", configFile)
 		config.CollectionInterval = DefaultCollectionInterval
 		config.BufferDuration = DefaultBufferDuration
 		config.Monitors = allMonitors()
+		log.Printf("Config file %s not found, using defaults and command-line flags", configFile)
 	}
 
 	// Validate configuration
@@ -96,13 +86,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	enabledMonitors := config.Monitors.Count()
-	log.Printf("Configuration loaded: port=%d, log-level=%s, collection-interval=%ds, buffer-duration=%ds, monitors=%d/7 enabled",
+	log.Printf(
+		"Configuration loaded: "+
+			"port=%d, log-level=%s, collection-interval=%ds, buffer-duration=%ds, monitors=%d/7 enabled",
 		config.Port, config.LogLevel, config.CollectionInterval, config.BufferDuration, enabledMonitors)
 
 	return &config, nil
 }
 
-// prints the command-line usage information
+// prints the command-line usage information.
 func PrintUsage() {
 	programName := filepath.Base(os.Args[0])
 	fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", programName)
@@ -110,7 +102,7 @@ func PrintUsage() {
 	flag.PrintDefaults()
 }
 
-// load configuration from a YAML file
+// load configuration from a YAML file.
 func loadFromFile(filename string) (*Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -123,19 +115,37 @@ func loadFromFile(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var yamlConfig YAMLConfig
-	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
+	var config YAMLConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML config: %w", err)
 	}
 
-	// Convert YAML config to internal Config
-	config := &Config{
-		Port:               yamlConfig.Server.Port,
-		LogLevel:           yamlConfig.Logging.Level,
-		Monitors:           yamlConfig.Monitors,
-		CollectionInterval: yamlConfig.Advanced.CollectionInterval,
-		BufferDuration:     yamlConfig.Advanced.BufferDuration,
+	collectionInterval := config.Advanced.CollectionInterval
+	if collectionInterval <= 0 {
+		log.Printf(
+			"Invalid collection interval %d, using default %d",
+			collectionInterval, DefaultCollectionInterval)
+		collectionInterval = DefaultCollectionInterval
 	}
 
-	return config, nil
+	bufferDuration := config.Advanced.BufferDuration
+	if bufferDuration <= 0 {
+		log.Printf("Invalid buffer duration %d, using default %d", bufferDuration, DefaultBufferDuration)
+		bufferDuration = DefaultBufferDuration
+	}
+
+	monitors := config.Monitors
+	if monitors.IsEmpty() {
+		monitors = allMonitors()
+		log.Printf("No monitor configuration found, enabling all monitors by default")
+	}
+
+	// Convert YAML config to internal Config
+	return &Config{
+		Port:               config.Server.Port,
+		LogLevel:           config.Logging.Level,
+		Monitors:           monitors,
+		CollectionInterval: collectionInterval,
+		BufferDuration:     bufferDuration,
+	}, nil
 }

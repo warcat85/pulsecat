@@ -34,7 +34,7 @@ func NewDummyTopTalkersCollector() Collector {
 
 // returns the metric type for top talkers.
 func (c *DummyTopTalkersCollector) Type() metrics.MetricType {
-	return metrics.TOP_TALKERS
+	return metrics.TopTalkers
 }
 
 // returns a human-readable name for this collector.
@@ -43,8 +43,7 @@ func (c *DummyTopTalkersCollector) Name() string {
 }
 
 // returns a simulated top talkers snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyTopTalkersCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyTopTalkersCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	now := time.Now()
 	second := now.Second()
 	return &NetworkTalkers{
@@ -54,7 +53,7 @@ func (c *DummyTopTalkersCollector) Collect(ctx context.Context) (any, error) {
 					Protocol: "TCP",
 					Port:     80,
 				},
-				BytesPerSecond: 100000 + uint64(second%10000),
+				BytesPerSecond: 100000 + uint64(second%10000), //nolint:gosec // cannot be over 10000
 				Percentage:     80.0 + float64(second%5),
 			},
 		},

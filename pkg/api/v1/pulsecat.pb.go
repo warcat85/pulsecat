@@ -7,11 +7,12 @@
 package v1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -235,7 +236,7 @@ func (x *MetricPulse) GetLoadAverage() *LoadAverage {
 	return nil
 }
 
-func (x *MetricPulse) GetCpuUsage() *CpuUsage {
+func (x *MetricPulse) GetCpuUsage() *CPUUsage {
 	if x != nil {
 		if x, ok := x.Metric.(*MetricPulse_CpuUsage); ok {
 			return x.CpuUsage
@@ -280,7 +281,7 @@ func (x *MetricPulse) GetListeningSockets() *ListeningSockets {
 	return nil
 }
 
-func (x *MetricPulse) GetTcpConnectionStates() *TcpConnectionStates {
+func (x *MetricPulse) GetTcpConnectionStates() *TCPConnectionStates {
 	if x != nil {
 		if x, ok := x.Metric.(*MetricPulse_TcpConnectionStates); ok {
 			return x.TcpConnectionStates
@@ -302,7 +303,7 @@ type MetricPulse_LoadAverage struct {
 }
 
 type MetricPulse_CpuUsage struct {
-	CpuUsage *CpuUsage `protobuf:"bytes,4,opt,name=cpu_usage,json=cpuUsage,proto3,oneof"`
+	CpuUsage *CPUUsage `protobuf:"bytes,4,opt,name=cpu_usage,json=cpuUsage,proto3,oneof"`
 }
 
 type MetricPulse_DiskUsage struct {
@@ -322,7 +323,7 @@ type MetricPulse_ListeningSockets struct {
 }
 
 type MetricPulse_TcpConnectionStates struct {
-	TcpConnectionStates *TcpConnectionStates `protobuf:"bytes,9,opt,name=tcp_connection_states,json=tcpConnectionStates,proto3,oneof"`
+	TcpConnectionStates *TCPConnectionStates `protobuf:"bytes,9,opt,name=tcp_connection_states,json=tcpConnectionStates,proto3,oneof"`
 }
 
 func (*MetricPulse_Meow) isMetricPulse_Metric() {}
@@ -580,8 +581,8 @@ func (x *LoadAverage) GetFifteenMin() float64 {
 	return 0
 }
 
-// CpuUsage represents CPU usage percentages
-type CpuUsage struct {
+// CPUUsage represents CPU usage percentages
+type CPUUsage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          float64                `protobuf:"fixed64,1,opt,name=user,proto3" json:"user,omitempty"`
 	System        float64                `protobuf:"fixed64,2,opt,name=system,proto3" json:"system,omitempty"`
@@ -596,20 +597,20 @@ type CpuUsage struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CpuUsage) Reset() {
-	*x = CpuUsage{}
+func (x *CPUUsage) Reset() {
+	*x = CPUUsage{}
 	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CpuUsage) String() string {
+func (x *CPUUsage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CpuUsage) ProtoMessage() {}
+func (*CPUUsage) ProtoMessage() {}
 
-func (x *CpuUsage) ProtoReflect() protoreflect.Message {
+func (x *CPUUsage) ProtoReflect() protoreflect.Message {
 	mi := &file_api_v1_pulsecat_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -621,68 +622,68 @@ func (x *CpuUsage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CpuUsage.ProtoReflect.Descriptor instead.
-func (*CpuUsage) Descriptor() ([]byte, []int) {
+// Deprecated: Use CPUUsage.ProtoReflect.Descriptor instead.
+func (*CPUUsage) Descriptor() ([]byte, []int) {
 	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *CpuUsage) GetUser() float64 {
+func (x *CPUUsage) GetUser() float64 {
 	if x != nil {
 		return x.User
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetSystem() float64 {
+func (x *CPUUsage) GetSystem() float64 {
 	if x != nil {
 		return x.System
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetIdle() float64 {
+func (x *CPUUsage) GetIdle() float64 {
 	if x != nil {
 		return x.Idle
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetNice() float64 {
+func (x *CPUUsage) GetNice() float64 {
 	if x != nil {
 		return x.Nice
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetIowait() float64 {
+func (x *CPUUsage) GetIowait() float64 {
 	if x != nil {
 		return x.Iowait
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetIrq() float64 {
+func (x *CPUUsage) GetIrq() float64 {
 	if x != nil {
 		return x.Irq
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetSoftIrq() float64 {
+func (x *CPUUsage) GetSoftIrq() float64 {
 	if x != nil {
 		return x.SoftIrq
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetSteal() float64 {
+func (x *CPUUsage) GetSteal() float64 {
 	if x != nil {
 		return x.Steal
 	}
 	return 0
 }
 
-func (x *CpuUsage) GetGuest() float64 {
+func (x *CPUUsage) GetGuest() float64 {
 	if x != nil {
 		return x.Guest
 	}
@@ -1213,8 +1214,8 @@ func (x *ListeningSocket) GetAddress() string {
 	return ""
 }
 
-// TcpConnectionStates contains counts of TCP connections in various states
-type TcpConnectionStates struct {
+// TCPConnectionStates contains counts of TCP connections in various states
+type TCPConnectionStates struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Established   uint32                 `protobuf:"varint,1,opt,name=established,proto3" json:"established,omitempty"`
 	SynSent       uint32                 `protobuf:"varint,2,opt,name=syn_sent,json=synSent,proto3" json:"syn_sent,omitempty"`
@@ -1231,20 +1232,20 @@ type TcpConnectionStates struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *TcpConnectionStates) Reset() {
-	*x = TcpConnectionStates{}
+func (x *TCPConnectionStates) Reset() {
+	*x = TCPConnectionStates{}
 	mi := &file_api_v1_pulsecat_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *TcpConnectionStates) String() string {
+func (x *TCPConnectionStates) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TcpConnectionStates) ProtoMessage() {}
+func (*TCPConnectionStates) ProtoMessage() {}
 
-func (x *TcpConnectionStates) ProtoReflect() protoreflect.Message {
+func (x *TCPConnectionStates) ProtoReflect() protoreflect.Message {
 	mi := &file_api_v1_pulsecat_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1256,82 +1257,82 @@ func (x *TcpConnectionStates) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TcpConnectionStates.ProtoReflect.Descriptor instead.
-func (*TcpConnectionStates) Descriptor() ([]byte, []int) {
+// Deprecated: Use TCPConnectionStates.ProtoReflect.Descriptor instead.
+func (*TCPConnectionStates) Descriptor() ([]byte, []int) {
 	return file_api_v1_pulsecat_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *TcpConnectionStates) GetEstablished() uint32 {
+func (x *TCPConnectionStates) GetEstablished() uint32 {
 	if x != nil {
 		return x.Established
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetSynSent() uint32 {
+func (x *TCPConnectionStates) GetSynSent() uint32 {
 	if x != nil {
 		return x.SynSent
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetSynRecv() uint32 {
+func (x *TCPConnectionStates) GetSynRecv() uint32 {
 	if x != nil {
 		return x.SynRecv
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetFinWait1() uint32 {
+func (x *TCPConnectionStates) GetFinWait1() uint32 {
 	if x != nil {
 		return x.FinWait1
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetFinWait2() uint32 {
+func (x *TCPConnectionStates) GetFinWait2() uint32 {
 	if x != nil {
 		return x.FinWait2
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetTimeWait() uint32 {
+func (x *TCPConnectionStates) GetTimeWait() uint32 {
 	if x != nil {
 		return x.TimeWait
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetClose() uint32 {
+func (x *TCPConnectionStates) GetClose() uint32 {
 	if x != nil {
 		return x.Close
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetCloseWait() uint32 {
+func (x *TCPConnectionStates) GetCloseWait() uint32 {
 	if x != nil {
 		return x.CloseWait
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetLastAck() uint32 {
+func (x *TCPConnectionStates) GetLastAck() uint32 {
 	if x != nil {
 		return x.LastAck
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetListen() uint32 {
+func (x *TCPConnectionStates) GetListen() uint32 {
 	if x != nil {
 		return x.Listen
 	}
 	return 0
 }
 
-func (x *TcpConnectionStates) GetClosing() uint32 {
+func (x *TCPConnectionStates) GetClosing() uint32 {
 	if x != nil {
 		return x.Closing
 	}
@@ -1353,14 +1354,14 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12'\n" +
 	"\x04meow\x18\x02 \x01(\v2\x11.pulsecat.v1.MeowH\x00R\x04meow\x12=\n" +
 	"\fload_average\x18\x03 \x01(\v2\x18.pulsecat.v1.LoadAverageH\x00R\vloadAverage\x124\n" +
-	"\tcpu_usage\x18\x04 \x01(\v2\x15.pulsecat.v1.CpuUsageH\x00R\bcpuUsage\x128\n" +
+	"\tcpu_usage\x18\x04 \x01(\v2\x15.pulsecat.v1.CPUUsageH\x00R\bcpuUsage\x128\n" +
 	"\n" +
 	"disk_usage\x18\x05 \x01(\v2\x17.pulsecat.v1.DiskUsagesH\x00R\tdiskUsage\x12@\n" +
 	"\rnetwork_stats\x18\x06 \x01(\v2\x19.pulsecat.v1.NetworkStatsH\x00R\fnetworkStats\x12>\n" +
 	"\vtop_talkers\x18\a \x01(\v2\x1b.pulsecat.v1.NetworkTalkersH\x00R\n" +
 	"topTalkers\x12L\n" +
 	"\x11listening_sockets\x18\b \x01(\v2\x1d.pulsecat.v1.ListeningSocketsH\x00R\x10listeningSockets\x12V\n" +
-	"\x15tcp_connection_states\x18\t \x01(\v2 .pulsecat.v1.TcpConnectionStatesH\x00R\x13tcpConnectionStatesB\b\n" +
+	"\x15tcp_connection_states\x18\t \x01(\v2 .pulsecat.v1.TCPConnectionStatesH\x00R\x13tcpConnectionStatesB\b\n" +
 	"\x06metric\" \n" +
 	"\x04Meow\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\":\n" +
@@ -1376,7 +1377,7 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\bfive_min\x18\x02 \x01(\x01R\afiveMin\x12\x1f\n" +
 	"\vfifteen_min\x18\x03 \x01(\x01R\n" +
 	"fifteenMin\"\xcf\x01\n" +
-	"\bCpuUsage\x12\x12\n" +
+	"\bCPUUsage\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\x01R\x04user\x12\x16\n" +
 	"\x06system\x18\x02 \x01(\x01R\x06system\x12\x12\n" +
 	"\x04idle\x18\x03 \x01(\x01R\x04idle\x12\x12\n" +
@@ -1439,7 +1440,7 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04port\x18\x05 \x01(\rR\x04port\x12\x18\n" +
 	"\aaddress\x18\x06 \x01(\tR\aaddress\"\xc6\x02\n" +
-	"\x13TcpConnectionStates\x12 \n" +
+	"\x13TCPConnectionStates\x12 \n" +
 	"\vestablished\x18\x01 \x01(\rR\vestablished\x12\x19\n" +
 	"\bsyn_sent\x18\x02 \x01(\rR\asynSent\x12\x19\n" +
 	"\bsyn_recv\x18\x03 \x01(\rR\asynRecv\x12\x1b\n" +
@@ -1479,36 +1480,39 @@ func file_api_v1_pulsecat_proto_rawDescGZIP() []byte {
 	return file_api_v1_pulsecat_proto_rawDescData
 }
 
-var file_api_v1_pulsecat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_v1_pulsecat_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
-var file_api_v1_pulsecat_proto_goTypes = []any{
-	(MetricType)(0),             // 0: pulsecat.v1.MetricType
-	(*SubscribeRequest)(nil),    // 1: pulsecat.v1.SubscribeRequest
-	(*MetricPulse)(nil),         // 2: pulsecat.v1.MetricPulse
-	(*Meow)(nil),                // 3: pulsecat.v1.Meow
-	(*DiskUsages)(nil),          // 4: pulsecat.v1.DiskUsages
-	(*NetworkTalkers)(nil),      // 5: pulsecat.v1.NetworkTalkers
-	(*ListeningSockets)(nil),    // 6: pulsecat.v1.ListeningSockets
-	(*LoadAverage)(nil),         // 7: pulsecat.v1.LoadAverage
-	(*CpuUsage)(nil),            // 8: pulsecat.v1.CpuUsage
-	(*DiskUsage)(nil),           // 9: pulsecat.v1.DiskUsage
-	(*NetworkStats)(nil),        // 10: pulsecat.v1.NetworkStats
-	(*NetworkTalker)(nil),       // 11: pulsecat.v1.NetworkTalker
-	(*ProtocolTalker)(nil),      // 12: pulsecat.v1.ProtocolTalker
-	(*ConnectionTalker)(nil),    // 13: pulsecat.v1.ConnectionTalker
-	(*ListeningSocket)(nil),     // 14: pulsecat.v1.ListeningSocket
-	(*TcpConnectionStates)(nil), // 15: pulsecat.v1.TcpConnectionStates
-}
+var (
+	file_api_v1_pulsecat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+	file_api_v1_pulsecat_proto_msgTypes  = make([]protoimpl.MessageInfo, 15)
+	file_api_v1_pulsecat_proto_goTypes   = []any{
+		(MetricType)(0),             // 0: pulsecat.v1.MetricType
+		(*SubscribeRequest)(nil),    // 1: pulsecat.v1.SubscribeRequest
+		(*MetricPulse)(nil),         // 2: pulsecat.v1.MetricPulse
+		(*Meow)(nil),                // 3: pulsecat.v1.Meow
+		(*DiskUsages)(nil),          // 4: pulsecat.v1.DiskUsages
+		(*NetworkTalkers)(nil),      // 5: pulsecat.v1.NetworkTalkers
+		(*ListeningSockets)(nil),    // 6: pulsecat.v1.ListeningSockets
+		(*LoadAverage)(nil),         // 7: pulsecat.v1.LoadAverage
+		(*CPUUsage)(nil),            // 8: pulsecat.v1.CPUUsage
+		(*DiskUsage)(nil),           // 9: pulsecat.v1.DiskUsage
+		(*NetworkStats)(nil),        // 10: pulsecat.v1.NetworkStats
+		(*NetworkTalker)(nil),       // 11: pulsecat.v1.NetworkTalker
+		(*ProtocolTalker)(nil),      // 12: pulsecat.v1.ProtocolTalker
+		(*ConnectionTalker)(nil),    // 13: pulsecat.v1.ConnectionTalker
+		(*ListeningSocket)(nil),     // 14: pulsecat.v1.ListeningSocket
+		(*TCPConnectionStates)(nil), // 15: pulsecat.v1.TCPConnectionStates
+	}
+)
+
 var file_api_v1_pulsecat_proto_depIdxs = []int32{
 	0,  // 0: pulsecat.v1.SubscribeRequest.metric_type:type_name -> pulsecat.v1.MetricType
 	3,  // 1: pulsecat.v1.MetricPulse.meow:type_name -> pulsecat.v1.Meow
 	7,  // 2: pulsecat.v1.MetricPulse.load_average:type_name -> pulsecat.v1.LoadAverage
-	8,  // 3: pulsecat.v1.MetricPulse.cpu_usage:type_name -> pulsecat.v1.CpuUsage
+	8,  // 3: pulsecat.v1.MetricPulse.cpu_usage:type_name -> pulsecat.v1.CPUUsage
 	4,  // 4: pulsecat.v1.MetricPulse.disk_usage:type_name -> pulsecat.v1.DiskUsages
 	10, // 5: pulsecat.v1.MetricPulse.network_stats:type_name -> pulsecat.v1.NetworkStats
 	5,  // 6: pulsecat.v1.MetricPulse.top_talkers:type_name -> pulsecat.v1.NetworkTalkers
 	6,  // 7: pulsecat.v1.MetricPulse.listening_sockets:type_name -> pulsecat.v1.ListeningSockets
-	15, // 8: pulsecat.v1.MetricPulse.tcp_connection_states:type_name -> pulsecat.v1.TcpConnectionStates
+	15, // 8: pulsecat.v1.MetricPulse.tcp_connection_states:type_name -> pulsecat.v1.TCPConnectionStates
 	9,  // 9: pulsecat.v1.DiskUsages.disks:type_name -> pulsecat.v1.DiskUsage
 	11, // 10: pulsecat.v1.NetworkTalkers.talkers:type_name -> pulsecat.v1.NetworkTalker
 	14, // 11: pulsecat.v1.ListeningSockets.sockets:type_name -> pulsecat.v1.ListeningSocket

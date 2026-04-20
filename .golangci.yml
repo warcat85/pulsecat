@@ -4,30 +4,57 @@ run:
 linters-settings:
   funlen:
     lines: 150
-    statements: 80
+    statements: 50
+  depguard:
+    rules:
+      Main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - google.golang.org/grpc
+          - gopkg.in/yaml.v3
+          - pulsecat/internal/app
+          - pulsecat/internal/builder
+          - pulsecat/internal/collector
+          - pulsecat/internal/collector/average
+          - pulsecat/internal/collector/builder
+          - pulsecat/internal/config
+          - pulsecat/internal/metrics
+          - pulsecat/internal/runner
+          - pulsecat/internal/server
+          - pulsecat/internal/storage
+          - pulsecat/internal/version
+          - pulsecat/pkg/api/v1
+      Test:
+        files:
+          - $test
+        allow:
+          - $gostd
 
 linters:
   disable-all: true
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
+    # - deadcode # deprecated - gave warning
     - depguard
     - dogsled
     - dupl
     - durationcheck
     - errorlint
     - exhaustive
-    - exportloopref
+    # - exportloopref # deprecated - gave warning
     - funlen
-    - gci
+    # - gci # demands different formatting than gci and always fails, cannot satisfy both
     - gocognit
     - goconst
     - gocritic
     - gocyclo
     - godot
     - gofmt
-    - gofumpt
+    - gofumpt 
     - goheader
     - gomoddirectives
     - gomodguard
@@ -35,7 +62,7 @@ linters:
     - gosec
     - gosimple
     - govet
-    - ifshort
+    # - ifshort # deprecated - gave warning
     - importas
     - ineffassign
     - lll
@@ -51,7 +78,7 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
+    # - structcheck # deprecated - gave warning
     - stylecheck
     - tagliatelle
     - thelper
@@ -60,6 +87,6 @@ linters:
     - unconvert
     - unparam
     - unused
-    - varcheck
+    # - varcheck # deprecated - gave warning
     - wastedassign
     - whitespace

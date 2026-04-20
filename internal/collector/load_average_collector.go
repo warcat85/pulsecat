@@ -23,7 +23,7 @@ func NewDummyLoadAverageCollector() Collector {
 
 // returns the metric type for load average.
 func (c *DummyLoadAverageCollector) Type() metrics.MetricType {
-	return metrics.LOAD_AVERAGE
+	return metrics.LoadAverage
 }
 
 // returns a human-readable name for this collector.
@@ -32,8 +32,7 @@ func (c *DummyLoadAverageCollector) Name() string {
 }
 
 // returns a simulated load average snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyLoadAverageCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyLoadAverageCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	now := time.Now()
 	second := now.Second()
 	baseLoad := 0.1 + float64(second%30)*0.01

@@ -64,6 +64,35 @@ func (rb *RingBuffer[T]) Slice() []T {
 	return result
 }
 
+// copies the last n items in the buffer in chronological order (oldest first).
+// If n is greater than the number of items stored, all items are returned.
+// If n <= 0 or buffer is empty, returns nil.
+func (rb *RingBuffer[T]) Last(n int) []T {
+	rb.mu.RLock()
+	defer rb.mu.RUnlock()
+
+	if rb.size == 0 || n <= 0 {
+		return nil
+	}
+	if n > rb.size {
+		n = rb.size
+	}
+
+	result := make([]T, n)
+	// start index of the oldest among the last n items
+	start := (rb.tail + (rb.size - n)) % rb.capacity
+	if start+n <= rb.capacity {
+		// contiguous segment
+		copy(result, rb.buffer[start:start+n])
+	} else {
+		// wraps around the end of the buffer
+		first := rb.capacity - start
+		copy(result, rb.buffer[start:])
+		copy(result[first:], rb.buffer[:n-first])
+	}
+	return result
+}
+
 // number of items currently stored in the buffer.
 func (rb *RingBuffer[T]) Len() int {
 	rb.mu.RLock()

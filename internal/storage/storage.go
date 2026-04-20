@@ -8,9 +8,10 @@ import (
 
 type Storage interface {
 	Store(ctx context.Context, sample metrics.Sample) error
+	Last(ctx context.Context, numSamples int) metrics.Samples
 }
 
-// the collector with buffer
+// the storage with buffer.
 type BufferedStorage struct {
 	Storage
 	buffer *RingBuffer[metrics.Sample]
@@ -22,13 +23,13 @@ func NewBufferedStorage(capacity int) *BufferedStorage {
 	}
 }
 
-func (c *BufferedStorage) Store(ctx context.Context, sample metrics.Sample) error {
+func (c *BufferedStorage) Store(_ context.Context, sample metrics.Sample) error {
 	c.buffer.Push(sample)
 	return nil
 }
 
-func (c *BufferedStorage) Buffer() *RingBuffer[metrics.Sample] {
-	return c.buffer
+func (c *BufferedStorage) Last(_ context.Context, numSamples int) metrics.Samples {
+	return c.buffer.Last(numSamples)
 }
 
 // DummyStorage prints every sample it receives to stdout.
@@ -38,7 +39,12 @@ func NewDummyStorage() *DummyStorage {
 	return &DummyStorage{}
 }
 
-func (d *DummyStorage) Store(ctx context.Context, sample metrics.Sample) error {
+func (d *DummyStorage) Store(_ context.Context, sample metrics.Sample) error {
 	log.Printf("Dummy storage is storing: %+v\n", sample)
+	return nil
+}
+
+func (d *DummyStorage) Last(_ context.Context, numSamples int) metrics.Samples {
+	log.Printf("Dummy storage returning last %d samples\n", numSamples)
 	return nil
 }

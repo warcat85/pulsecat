@@ -1,6 +1,6 @@
 package config
 
-// default values
+// default values.
 const (
 	DefaultPort               = 25225 // port for gRPC server (BLACK in numbers)
 	DefaultLogLevel           = "info"
@@ -8,7 +8,7 @@ const (
 	DefaultBufferDuration     = 300 // seconds (5 minutes)
 )
 
-// application configuration
+// application configuration.
 type Config struct {
 	Port               int // Port for gRPC server
 	LogLevel           string
@@ -19,18 +19,18 @@ type Config struct {
 	Monitors MonitorsConfig
 }
 
-// enable/disable settings for each monitor type
+// enable/disable each monitor type.
 type MonitorsConfig struct {
-	LoadAverage         bool `yaml:"load_average"`
-	CPUUsage            bool `yaml:"cpu_usage"`
-	DiskUsage           bool `yaml:"disk_usage"`
-	NetworkStats        bool `yaml:"network_stats"`
-	TopTalkers          bool `yaml:"top_talkers"`
-	ListeningSockets    bool `yaml:"listening_sockets"`
-	TCPConnectionStates bool `yaml:"tcp_connection_states"`
+	LoadAverage         bool `yaml:"loadAverage"`
+	CPUUsage            bool `yaml:"cpuUsage"`
+	DiskUsage           bool `yaml:"diskUsage"`
+	NetworkStats        bool `yaml:"networkStats"`
+	TopTalkers          bool `yaml:"topTalkers"`
+	ListeningSockets    bool `yaml:"listeningSockets"`
+	TCPConnectionStates bool `yaml:"tcpConnectionStates"`
 }
 
-// number of enabled monitors
+// number of enabled monitors.
 func (m MonitorsConfig) Count() int {
 	count := 0
 	if m.LoadAverage {
@@ -57,12 +57,12 @@ func (m MonitorsConfig) Count() int {
 	return count
 }
 
-// returns true if no monitors are enabled
+// returns true if no monitors are enabled.
 func (m MonitorsConfig) IsEmpty() bool {
 	return m.Count() == 0
 }
 
-// new MonitorsConfig with all monitors enabled
+// new MonitorsConfig with all monitors enabled.
 func allMonitors() MonitorsConfig {
 	return MonitorsConfig{
 		LoadAverage:         true,
@@ -75,7 +75,7 @@ func allMonitors() MonitorsConfig {
 	}
 }
 
-// configuration in YAML file
+// configuration in YAML file.
 type YAMLConfig struct {
 	Server   ServerConfig   `yaml:"server"`
 	Logging  LoggingConfig  `yaml:"logging"`
@@ -93,10 +93,10 @@ type LoggingConfig struct {
 }
 
 type AdvancedConfig struct {
-	CollectionInterval int `yaml:"collection_interval,omitempty"`
-	BufferDuration     int `yaml:"buffer_duration,omitempty"`
+	CollectionInterval int `yaml:"collectionInterval,omitempty"`
+	BufferDuration     int `yaml:"bufferDuration,omitempty"`
 	// TODO configuration for future improvement
-	MaxTopTalkers      int      `yaml:"max_top_talkers,omitempty"`
-	NetworkInterface   string   `yaml:"network_interface,omitempty"`
-	ExcludeFilesystems []string `yaml:"exclude_filesystems,omitempty"`
+	MaxTopTalkers      int      `yaml:"maxTopTalkers,omitempty"`
+	NetworkInterface   string   `yaml:"networkInterface,omitempty"`
+	ExcludeFilesystems []string `yaml:"excludeFilesystems,omitempty"`
 }

@@ -30,7 +30,7 @@ func NewDummyDiskUsageCollector() Collector {
 
 // returns the metric type for disk usage.
 func (c *DummyDiskUsageCollector) Type() metrics.MetricType {
-	return metrics.DISK_USAGE
+	return metrics.DiskUsage
 }
 
 // returns a human-readable name for this collector.
@@ -39,8 +39,7 @@ func (c *DummyDiskUsageCollector) Name() string {
 }
 
 // returns a simulated disk usage snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyDiskUsageCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyDiskUsageCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	now := time.Now()
 	second := now.Second()
 	return &DiskUsages{
@@ -48,7 +47,7 @@ func (c *DummyDiskUsageCollector) Collect(ctx context.Context) (any, error) {
 			{
 				Filesystem:  "/dev/sda1",
 				TotalMb:     102400,
-				UsedMb:      51200 + uint64(second%100),
+				UsedMb:      51200 + uint64(second%100), //nolint:gosec // cannot be over 100
 				UsedPercent: 50.0 + float64(second%10)*0.1,
 				MountPoint:  "/",
 			},

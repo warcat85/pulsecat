@@ -32,12 +32,12 @@ message MetricPulse {
   oneof metric {
     Meow meow = 2;
     LoadAverage load_average = 3;
-    CpuUsage cpu_usage = 4;
+    CPUUsage cpu_usage = 4;
     DiskUsages disk_usage = 5;
     NetworkStats network_stats = 6;
     NetworkTalkers top_talkers = 7;
     ListeningSockets listening_sockets = 8;
-    TcpConnectionStates tcp_connection_states = 9;
+    TCPConnectionStates tcp_connection_states = 9;
   }
 }
 
@@ -66,8 +66,8 @@ message LoadAverage {
   double fifteen_min = 3;
 }
 
-// CpuUsage represents CPU usage percentages
-message CpuUsage {
+// CPUUsage represents CPU usage percentages
+message CPUUsage {
   double user = 1;
   double system = 2;
   double idle = 3;
@@ -139,8 +139,8 @@ message ListeningSocket {
   string address = 6;
 }
 
-// TcpConnectionStates contains counts of TCP connections in various states
-message TcpConnectionStates {
+// TCPConnectionStates contains counts of TCP connections in various states
+message TCPConnectionStates {
   uint32 established = 1;
   uint32 syn_sent = 2;
   uint32 syn_recv = 3;

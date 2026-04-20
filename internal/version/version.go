@@ -1,6 +1,6 @@
 package version
 
-// set by build flags
+// set by build flags.
 var (
 	Version    = "dev"
 	BuildTime  = "unknown"

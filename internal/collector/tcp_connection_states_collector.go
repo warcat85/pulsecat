@@ -7,36 +7,35 @@ import (
 )
 
 // represents TCP connection states data in internal format.
-type TcpConnectionStates struct {
+type TCPConnectionStates struct {
 	Established uint32
 	Listen      uint32
 }
 
 // a placeholder collector that returns simulated TCP connection states data.
-type DummyTcpConnectionStatesCollector struct{}
+type DummyTCPConnectionStatesCollector struct{}
 
 // creates a new dummy TCP connection states collector.
-func NewDummyTcpConnectionStatesCollector() Collector {
-	return &DummyTcpConnectionStatesCollector{}
+func NewDummyTCPConnectionStatesCollector() Collector {
+	return &DummyTCPConnectionStatesCollector{}
 }
 
 // returns the metric type for TCP connection states.
-func (c *DummyTcpConnectionStatesCollector) Type() metrics.MetricType {
-	return metrics.TCP_CONNECTION_STATES
+func (c *DummyTCPConnectionStatesCollector) Type() metrics.MetricType {
+	return metrics.TCPConnectionStates
 }
 
 // returns a human-readable name for this collector.
-func (c *DummyTcpConnectionStatesCollector) Name() string {
+func (c *DummyTCPConnectionStatesCollector) Name() string {
 	return "dummy_tcp_connection_states"
 }
 
 // returns a simulated TCP connection states snapshot.
-// The data matches the logic in server.CollectStatistics.
-func (c *DummyTcpConnectionStatesCollector) Collect(ctx context.Context) (any, error) {
+func (c *DummyTCPConnectionStatesCollector) Collect(_ context.Context) (metrics.Sample, error) {
 	now := time.Now()
 	second := now.Second()
-	return &TcpConnectionStates{
-		Established: 10 + uint32(second%5),
+	return &TCPConnectionStates{
+		Established: 10 + uint32(second%5), //nolint:gosec // cannot be over 5
 		Listen:      5,
 	}, nil
 }

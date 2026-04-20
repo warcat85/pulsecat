@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -20,10 +21,12 @@ import (
 )
 
 var (
-	serverAddr   = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
-	startDelay   = flag.Uint("delay", 0, "Start delay (in seconds)")
-	frequency    = flag.Uint("frequency", 1, "Frequency between snapshots (in seconds)")
-	metricType   = flag.String("metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
+	serverAddr = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
+	startDelay = flag.Uint("delay", 0, "Start delay (in seconds)")
+	frequency  = flag.Uint(
+		"frequency", 1, "Frequency between snapshots (in seconds)")
+	metricType = flag.String(
+		"metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
 	duration     = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
 	verbose      = flag.Bool("verbose", false, "Enable verbose output")
 	printVersion = flag.Bool("version", false, "Print version and exit")
@@ -108,8 +111,8 @@ func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
 	metric := parseMetricType(*metricType)
 
 	req := &v1.SubscribeRequest{
-		StartDelay: uint32(*startDelay),
-		Frequency:  uint32(*frequency),
+		StartDelay: uint32(*startDelay), //nolint:gosec // no harm if these are huge
+		Frequency:  uint32(*frequency),  //nolint:gosec // no harm if these are huge
 		MetricType: metric,
 	}
 
@@ -121,7 +124,7 @@ func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
 	// Start subscription
 	stream, err := client.Subscribe(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe: %v", err)
+		return fmt.Errorf("failed to subscribe: %w", err)
 	}
 
 	log.Printf("Subscribed to PulseCat server. Receiving %s metric every %d seconds...", *metricType, *frequency)
@@ -156,12 +159,12 @@ func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
 		default:
 			// Receive next metric pulse
 			pulse, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				log.Printf("Server closed stream")
 				return nil
 			}
 			if err != nil {
-				return fmt.Errorf("error receiving metric pulse: %v", err)
+				return fmt.Errorf("error receiving metric pulse: %w", err)
 			}
 
 			snapshotCount++
@@ -177,13 +180,23 @@ func runSubscription(ctx context.Context, client v1.PulseCatClient) error {
 func runClient(ctx context.Context) error {
 	conn, err := grpc.NewClient(*serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %v", err)
+		return fmt.Errorf("failed to connect to server: %w", err)
 	}
 	defer conn.Close()
 
 	client := v1.NewPulseCatClient(conn)
 
 	return runSubscription(ctx, client)
+}
+
+func run() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := runClient(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
@@ -194,10 +207,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := runClient(ctx); err != nil {
-		log.Fatalf("Error: %v", err)
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
 }
