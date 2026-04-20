@@ -7,6 +7,13 @@ import (
 
 func CalculateLoadAverage(samples metrics.Samples) metrics.Sample {
 	n := float64(len(samples))
+	if n == 0 {
+		return &collector.LoadAverage{
+			OneMin:     0,
+			FiveMin:    0,
+			FifteenMin: 0,
+		}
+	}
 	var sumOneMin, sumFiveMin, sumFifteenMin float64
 	for _, sample := range samples {
 		sample := sample.(*collector.LoadAverage)
@@ -23,6 +30,13 @@ func CalculateLoadAverage(samples metrics.Samples) metrics.Sample {
 
 func CalculateCPUUsage(samples metrics.Samples) metrics.Sample {
 	n := float64(len(samples))
+	if n == 0 {
+		return &collector.CPUUsage{
+			User:   0,
+			System: 0,
+			Idle:   0,
+		}
+	}
 	var sumUser, sumSystem, sumIdle float64
 	for _, sample := range samples {
 		sample := sample.(*collector.CPUUsage)
@@ -39,6 +53,12 @@ func CalculateCPUUsage(samples metrics.Samples) metrics.Sample {
 
 func CalculateNetworkStats(samples metrics.Samples) metrics.Sample {
 	n := uint64(len(samples))
+	if n == 0 {
+		return &collector.NetworkStats{
+			TotalBytesReceived: 0,
+			TotalBytesSent:     0,
+		}
+	}
 	var sumReceive, sumTransmit uint64
 	for _, sample := range samples {
 		sample := sample.(*collector.NetworkStats)
@@ -53,6 +73,12 @@ func CalculateNetworkStats(samples metrics.Samples) metrics.Sample {
 
 func CalculateTCPConnectionStates(samples metrics.Samples) metrics.Sample {
 	n := uint32(len(samples)) //nolint:gosec // size of array cannot be out of range
+	if n == 0 {
+		return &collector.TCPConnectionStates{
+			Established: 0,
+			Listen:      0,
+		}
+	}
 	var sumEstablished, sumListen uint32
 	for _, sample := range samples {
 		sample := sample.(*collector.TCPConnectionStates)

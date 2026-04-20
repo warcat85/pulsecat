@@ -32,6 +32,26 @@ linters-settings:
           - $test
         allow:
           - $gostd
+          - github.com/stretchr/testify
+          - pulsecat/internal/app
+          - pulsecat/internal/builder
+          - pulsecat/internal/collector
+          - pulsecat/internal/collector/average
+          - pulsecat/internal/collector/builder
+          - pulsecat/internal/config
+          - pulsecat/internal/metrics
+          - pulsecat/internal/runner
+          - pulsecat/internal/server
+          - pulsecat/internal/storage
+          - pulsecat/internal/version
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - gocyclo
+        - gosec
 
 linters:
   disable-all: true
