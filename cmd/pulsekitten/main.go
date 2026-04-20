@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"pulsecat/internal/version"
 	"strings"
 	"syscall"
 	"time"
@@ -19,20 +20,13 @@ import (
 )
 
 var (
-	serverAddr = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
-	startDelay = flag.Uint("delay", 0, "Start delay (in seconds)")
-	frequency  = flag.Uint("frequency", 1, "Frequency between snapshots (in seconds)")
-	metricType = flag.String("metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
-	duration   = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
-	verbose    = flag.Bool("verbose", false, "Enable verbose output")
-	version    = flag.Bool("version", false, "Print version and exit")
-)
-
-// information set by build flags
-var (
-	Version    = "dev"
-	BuildTime  = "unknown"
-	CommitHash = "unknown"
+	serverAddr   = flag.String("server", "localhost:25225", "PulseCat server address (host:port)")
+	startDelay   = flag.Uint("delay", 0, "Start delay (in seconds)")
+	frequency    = flag.Uint("frequency", 1, "Frequency between snapshots (in seconds)")
+	metricType   = flag.String("metric", "load", "Metric type to subscribe to (load,cpu,disk,network,talkers,sockets,tcp,meow)")
+	duration     = flag.Uint("duration", 0, "Duration in seconds to run (0 = infinite)")
+	verbose      = flag.Bool("verbose", false, "Enable verbose output")
+	printVersion = flag.Bool("version", false, "Print version and exit")
 )
 
 func parseMetricType(input string) v1.MetricType {
@@ -195,8 +189,8 @@ func runClient(ctx context.Context) error {
 func main() {
 	flag.Parse()
 
-	if *version {
-		fmt.Printf("PulseKitten version %s (built %s, commit %s)\n", Version, BuildTime, CommitHash)
+	if *printVersion {
+		fmt.Printf("PulseKitten version v%s (built %s, commit %s)\n", version.Version, version.BuildTime, version.CommitHash)
 		os.Exit(0)
 	}
 

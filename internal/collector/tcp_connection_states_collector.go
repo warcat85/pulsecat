@@ -12,13 +12,11 @@ type TcpConnectionStates struct {
 	Listen      uint32
 }
 
-// aplaceholder collector that returns simulated TCP connection states data.
-type DummyTcpConnectionStatesCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated TCP connection states data.
+type DummyTcpConnectionStatesCollector struct{}
 
 // creates a new dummy TCP connection states collector.
-func NewDummyTcpConnectionStatesCollector() *DummyTcpConnectionStatesCollector {
+func NewDummyTcpConnectionStatesCollector() Collector {
 	return &DummyTcpConnectionStatesCollector{}
 }
 

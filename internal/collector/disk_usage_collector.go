@@ -20,13 +20,11 @@ type DiskUsages struct {
 	Disks []*DiskUsage
 }
 
-// aplaceholder collector that returns simulated disk usage data.
-type DummyDiskUsageCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated disk usage data.
+type DummyDiskUsageCollector struct{}
 
 // creates a new dummy disk usage collector.
-func NewDummyDiskUsageCollector() *DummyDiskUsageCollector {
+func NewDummyDiskUsageCollector() Collector {
 	return &DummyDiskUsageCollector{}
 }
 

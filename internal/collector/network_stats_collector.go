@@ -12,13 +12,11 @@ type NetworkStats struct {
 	TotalBytesSent     uint64
 }
 
-// aplaceholder collector that returns simulated network statistics.
-type DummyNetworkStatsCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated network statistics.
+type DummyNetworkStatsCollector struct{}
 
 // creates a new dummy network stats collector.
-func NewDummyNetworkStatsCollector() *DummyNetworkStatsCollector {
+func NewDummyNetworkStatsCollector() Collector {
 	return &DummyNetworkStatsCollector{}
 }
 

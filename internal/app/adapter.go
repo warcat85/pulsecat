@@ -2,16 +2,20 @@ package app
 
 import (
 	"context"
-	"pulsecat/internal/collector"
+	"pulsecat/internal/metrics"
 	"pulsecat/internal/storage"
-	"runtime/metrics"
 )
 
-type StoreConsumer struct {
-	collector.Consumer
-	store storage.Storage
+type StorageConsumer struct {
+	storage.Storage
 }
 
-func (c StoreConsumer) Consume(ctx context.Context, sample metrics.Sample) error {
-	return c.store.Store(ctx, sample)
+func NewStorageConsumer(s storage.Storage) *StorageConsumer {
+	return &StorageConsumer{
+		Storage: s,
+	}
+}
+
+func (c StorageConsumer) Consume(ctx context.Context, sample metrics.Sample) error {
+	return c.Store(ctx, sample)
 }

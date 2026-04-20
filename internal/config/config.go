@@ -1,12 +1,5 @@
 package config
 
-// set by build flags
-var (
-	Version    = "dev"
-	BuildTime  = "unknown"
-	CommitHash = "unknown"
-)
-
 // default values
 const (
 	DefaultPort               = 25225 // port for gRPC server (BLACK in numbers)

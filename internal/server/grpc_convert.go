@@ -1,10 +1,188 @@
 package server
 
 import (
+	"fmt"
 	"pulsecat/internal/collector"
 	"pulsecat/internal/metrics"
 	v1 "pulsecat/pkg/api/v1"
+	"time"
 )
+
+var converters = metrics.MetricMap[Converter]{
+	metrics.MEOW:                  MeowConverter{},
+	metrics.LOAD_AVERAGE:          LoadAverageConverter{},
+	metrics.CPU_USAGE:             CpuUsageConverter{},
+	metrics.DISK_USAGE:            DiskUsageConverter{},
+	metrics.NETWORK_STATS:         NetworkStatsConverter{},
+	metrics.TOP_TALKERS:           TopTalkersConverter{},
+	metrics.LISTENING_SOCKETS:     ListeningSocketsConverter{},
+	metrics.TCP_CONNECTION_STATES: TcpConnectionStatesConverter{},
+}
+
+type Converter interface {
+	Name() string
+	Convert(data any) (*v1.MetricPulse, error)
+}
+
+// MeowConverter is a converter for Meow.
+type MeowConverter struct{}
+
+func (MeowConverter) Name() string { return "meow" }
+
+// Convert implements the Converter interface for MeowConverter.
+func (c MeowConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*v1.Meow)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_Meow{
+		Meow: internalData,
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// LoadAverageConverter is a converter for load average.
+type LoadAverageConverter struct{}
+
+func (LoadAverageConverter) Name() string { return "load average" }
+
+// Convert implements the Converter interface for LoadAverageConverter.
+func (c LoadAverageConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.LoadAverage)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_LoadAverage{
+		LoadAverage: ConvertLoadAverage(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// CpuUsageConverter is a converter for CPU usage.
+type CpuUsageConverter struct{}
+
+func (CpuUsageConverter) Name() string { return "CPU usage" }
+
+// Convert implements the Converter interface for CpuUsageConverter.
+func (c CpuUsageConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.CpuUsage)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_CpuUsage{
+		CpuUsage: ConvertCpuUsage(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// DiskUsageConverter is a converter for disk usage.
+type DiskUsageConverter struct{}
+
+func (DiskUsageConverter) Name() string { return "disk usage" }
+
+// Convert implements the Converter interface for DiskUsageConverter.
+func (c DiskUsageConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.DiskUsages)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_DiskUsage{
+		DiskUsage: ConvertDiskUsagesToProto(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// NetworkStatsConverter is a converter for network stats.
+type NetworkStatsConverter struct{}
+
+func (NetworkStatsConverter) Name() string { return "network stats" }
+
+// Convert implements the Converter interface for NetworkStatsConverter.
+func (c NetworkStatsConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.NetworkStats)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_NetworkStats{
+		NetworkStats: ConvertNetworkStats(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// TopTalkersConverter is a converter for top talkers.
+type TopTalkersConverter struct{}
+
+func (TopTalkersConverter) Name() string { return "top talkers" }
+
+// Convert implements the Converter interface for TopTalkersConverter.
+func (c TopTalkersConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.NetworkTalkers)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_TopTalkers{
+		TopTalkers: ConvertNetworkTalkers(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// ListeningSocketsConverter is a converter for listening sockets.
+type ListeningSocketsConverter struct{}
+
+func (ListeningSocketsConverter) Name() string { return "listening sockets" }
+
+// Convert implements the Converter interface for ListeningSocketsConverter.
+func (c ListeningSocketsConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.ListeningSockets)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_ListeningSockets{
+		ListeningSockets: ConvertListeningSockets(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
+
+// TcpConnectionStatesConverter is a converter for TCP connection states.
+type TcpConnectionStatesConverter struct{}
+
+func (TcpConnectionStatesConverter) Name() string { return "TCP connection states" }
+
+// Convert implements the Converter interface for TcpConnectionStatesConverter.
+func (c TcpConnectionStatesConverter) Convert(data any) (*v1.MetricPulse, error) {
+	internalData, ok := data.(*collector.TcpConnectionStates)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from %s collector: %T", c.Name(), data)
+	}
+	metric := &v1.MetricPulse_TcpConnectionStates{
+		TcpConnectionStates: ConvertTcpConnectionStates(internalData),
+	}
+	return &v1.MetricPulse{
+		Timestamp: time.Now().Unix(),
+		Metric:    metric,
+	}, nil
+}
 
 // converts internal LoadAverage to protobuf LoadAverage.
 func ConvertLoadAverage(in *collector.LoadAverage) *v1.LoadAverage {
@@ -170,9 +348,11 @@ func ConvertTcpConnectionStates(in *collector.TcpConnectionStates) *v1.TcpConnec
 
 // converts a protobuf MetricType to internal MetricType.
 // Returns the internal metric type and true if the conversion is successful.
-// For unsupported metric types (UNSPECIFIED, MEOW) returns false.
+// For unsupported metric types (UNSPECIFIED) returns false.
 func ConvertMetricTypeFromProto(protoType v1.MetricType) (metrics.MetricType, bool) {
 	switch protoType {
+	case v1.MetricType_METRIC_TYPE_MEOW:
+		return metrics.MEOW, true
 	case v1.MetricType_METRIC_TYPE_LOAD_AVERAGE:
 		return metrics.LOAD_AVERAGE, true
 	case v1.MetricType_METRIC_TYPE_CPU_USAGE:

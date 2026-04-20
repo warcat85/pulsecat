@@ -20,13 +20,11 @@ type ListeningSockets struct {
 	Sockets []*ListeningSocket
 }
 
-// aplaceholder collector that returns simulated listening sockets data.
-type DummyListeningSocketsCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated listening sockets data.
+type DummyListeningSocketsCollector struct{}
 
 // creates a new dummy listening sockets collector.
-func NewDummyListeningSocketsCollector() *DummyListeningSocketsCollector {
+func NewDummyListeningSocketsCollector() Collector {
 	return &DummyListeningSocketsCollector{}
 }
 

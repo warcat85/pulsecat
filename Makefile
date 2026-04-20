@@ -4,14 +4,14 @@
 # Project configuration
 BINARY_NAME := pulsecat
 CLIENT_BINARY_NAME := pulsekitten
-VERSION := 0.1.0
+VERSION := $(shell git branch --show-current 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Go configuration
 GO := go
 GOFLAGS := -v
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.CommitHash=$(COMMIT_HASH)"
+LDFLAGS := -ldflags "-X pulsecat/internal/version.Version=$(VERSION) -X pulsecat/internal/version.BuildTime=$(BUILD_TIME) -X pulsecat/internal/version.CommitHash=$(COMMIT_HASH)"
 GOFILES := $(shell find . -name "*.go" -type f ! -path "./vendor/*")
 
 # Directories

@@ -24,13 +24,11 @@ type NetworkTalkers struct {
 	Talkers []*NetworkTalker
 }
 
-// aplaceholder collector that returns simulated top talkers data.
-type DummyTopTalkersCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated top talkers data.
+type DummyTopTalkersCollector struct{}
 
 // creates a new dummy top talkers collector.
-func NewDummyTopTalkersCollector() *DummyTopTalkersCollector {
+func NewDummyTopTalkersCollector() Collector {
 	return &DummyTopTalkersCollector{}
 }
 

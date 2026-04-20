@@ -7,6 +7,7 @@ import (
 	"net"
 	"pulsecat/internal/collector"
 	"pulsecat/internal/config"
+	"pulsecat/internal/metrics"
 	"sync"
 	"time"
 
@@ -18,15 +19,17 @@ import (
 // implements the PulseCatServer interface.
 type Server struct {
 	v1.UnimplementedPulseCatServer
-	config *config.Config
+	config     *config.Config
+	collectors metrics.MetricMap[collector.Collector]
 
 	mu sync.RWMutex
 }
 
 // creates a new gRPC server instance.
-func New(config *config.Config) *Server {
+func New(config *config.Config, collectors metrics.MetricMap[collector.Collector]) *Server {
 	return &Server{
-		config: config,
+		config:     config,
+		collectors: collectors,
 	}
 }
 
@@ -105,114 +108,26 @@ func (s *Server) Subscribe(req *v1.SubscribeRequest, stream v1.PulseCat_Subscrib
 }
 
 // createMetricPulse creates a MetricPulse message for the requested metric type.
-func (s *Server) createMetricPulse(metricType v1.MetricType) (*v1.MetricPulse, error) {
-	pulse := &v1.MetricPulse{
-		Timestamp: time.Now().Unix(),
+func (s *Server) createMetricPulse(protoType v1.MetricType) (*v1.MetricPulse, error) {
+	metricType, ok := ConvertMetricTypeFromProto(protoType)
+	if !ok {
+		return nil, fmt.Errorf("unsupported metric type: %v", protoType)
 	}
 
-	switch metricType {
-	case v1.MetricType_METRIC_TYPE_MEOW:
-		pulse.Metric = &v1.MetricPulse_Meow{
-			Meow: &v1.Meow{
-				Message: "Meow!",
-			},
-		}
-	case v1.MetricType_METRIC_TYPE_LOAD_AVERAGE:
-		c := collector.NewDummyLoadAverageCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("load average collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.LoadAverage)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from load average collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_LoadAverage{
-			LoadAverage: ConvertLoadAverage(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_CPU_USAGE:
-		c := collector.NewDummyCpuUsageCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("CPU usage collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.CpuUsage)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from CPU usage collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_CpuUsage{
-			CpuUsage: ConvertCpuUsage(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_DISK_USAGE:
-		c := collector.NewDummyDiskUsageCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("disk usage collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.DiskUsages)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from disk usage collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_DiskUsage{
-			DiskUsage: ConvertDiskUsagesToProto(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_NETWORK_STATS:
-		c := collector.NewDummyNetworkStatsCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("network stats collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.NetworkStats)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from network stats collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_NetworkStats{
-			NetworkStats: ConvertNetworkStats(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_TOP_TALKERS:
-		c := collector.NewDummyTopTalkersCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("top talkers collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.NetworkTalkers)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from top talkers collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_TopTalkers{
-			TopTalkers: ConvertNetworkTalkers(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_LISTENING_SOCKETS:
-		c := collector.NewDummyListeningSocketsCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("listening sockets collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.ListeningSockets)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from listening sockets collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_ListeningSockets{
-			ListeningSockets: ConvertListeningSockets(internalData),
-		}
-	case v1.MetricType_METRIC_TYPE_TCP_CONNECTION_STATES:
-		c := collector.NewDummyTcpConnectionStatesCollector()
-		data, err := c.Collect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("TCP connection states collection failed: %w", err)
-		}
-		internalData, ok := data.(*collector.TcpConnectionStates)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type from TCP connection states collector: %T", data)
-		}
-		pulse.Metric = &v1.MetricPulse_TcpConnectionStates{
-			TcpConnectionStates: ConvertTcpConnectionStates(internalData),
-		}
-	default:
-		return nil, fmt.Errorf("unsupported metric type: %v", metricType)
+	current, ok := s.collectors[metricType]
+	if !ok {
+		return nil, fmt.Errorf("collector is disabled for metric type: %v", metricType)
+	}
+	converter, ok := converters[metricType]
+	if !ok {
+		return nil, fmt.Errorf("converter is not registered for metric type: %v", metricType)
+	}
+	data, err := current.Collect(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("%s collection failed: %w", converter.Name(), err)
 	}
 
-	return pulse, nil
+	return converter.Convert(data)
 }
 
 func (s *Server) Run(stopCh chan struct{}) error {

@@ -13,13 +13,11 @@ type LoadAverage struct {
 	FifteenMin float64
 }
 
-// aplaceholder collector that returns simulated load average data.
-type DummyLoadAverageCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated load average data.
+type DummyLoadAverageCollector struct{}
 
 // creates a new dummy load average collector.
-func NewDummyLoadAverageCollector() *DummyLoadAverageCollector {
+func NewDummyLoadAverageCollector() Collector {
 	return &DummyLoadAverageCollector{}
 }
 

@@ -6,55 +6,50 @@ import (
 	"pulsecat/internal/collector"
 	"pulsecat/internal/config"
 	"pulsecat/internal/metrics"
+	"pulsecat/internal/runner"
 	"pulsecat/internal/server"
-	"time"
 )
 
 // represents the system monitoring daemon
 type Daemon struct {
-	config   *config.Config
-	server   *server.Server
-	registry *collector.Runner
-	stopCh   chan struct{}
-	doneCh   chan struct{}
+	config  *config.Config
+	server  *server.Server
+	manager *runner.Manager
+	stopCh  chan struct{}
+	doneCh  chan struct{}
 }
 
 func NewDaemon(config *config.Config) *Daemon {
-	srv := server.New(config)
+	builder := NewBuilder(config)
 
-	// Compute buffer capacity based on collection interval and buffer duration
-	interval := time.Duration(config.CollectionInterval) * time.Second
-	bufferCap := config.BufferDuration / config.CollectionInterval
-	if bufferCap < 1 {
-		panic("buffer capacity must be positive")
-	}
-	_ = interval
-	_ = bufferCap
+	collectors, manager := builder.BuildComponents()
+	collectors[metrics.MEOW] = collector.NewMeowCollector()
+	srv := server.New(config, collectors)
+	/*
+		manager := collector.NewManager()
 
-	runner := collector.NewRunner()
-
-	// Register placeholder collectors for enabled monitors
-	if config.Monitors.LoadAverage {
-		runner.Register(collector.NewDummyCollector(metrics.LOAD_AVERAGE))
-	}
-	if config.Monitors.CPUUsage {
-		runner.Register(collector.NewDummyCollector(metrics.CPU_USAGE))
-	}
-	if config.Monitors.DiskUsage {
-		runner.Register(collector.NewDummyCollector(metrics.DISK_USAGE))
-	}
-	if config.Monitors.NetworkStats {
-		runner.Register(collector.NewDummyCollector(metrics.NETWORK_STATS))
-	}
-	if config.Monitors.TopTalkers {
-		runner.Register(collector.NewDummyCollector(metrics.TOP_TALKERS))
-	}
-	if config.Monitors.ListeningSockets {
-		runner.Register(collector.NewDummyCollector(metrics.LISTENING_SOCKETS))
-	}
-	if config.Monitors.TCPConnectionStates {
-		runner.Register(collector.NewDummyCollector(metrics.TCP_CONNECTION_STATES))
-	}
+		// Register placeholder collectors for enabled monitors
+		if config.Monitors.LoadAverage {
+			manager.Register(builder.BuildDummyRunner(metrics.LOAD_AVERAGE))
+		}
+		if config.Monitors.CPUUsage {
+			manager.Register(builder.BuildDummyRunner(metrics.CPU_USAGE))
+		}
+		if config.Monitors.DiskUsage {
+			manager.Register(builder.BuildDummyRunner(metrics.DISK_USAGE))
+		}
+		if config.Monitors.NetworkStats {
+			manager.Register(builder.BuildDummyRunner(metrics.NETWORK_STATS))
+		}
+		if config.Monitors.TopTalkers {
+			manager.Register(builder.BuildDummyRunner(metrics.TOP_TALKERS))
+		}
+		if config.Monitors.ListeningSockets {
+			manager.Register(builder.BuildDummyRunner(metrics.LISTENING_SOCKETS))
+		}
+		if config.Monitors.TCPConnectionStates {
+			manager.Register(builder.BuildDummyRunner(metrics.TCP_CONNECTION_STATES))
+		}*/
 	// Always register meow collector (it's a special metric)
 	/*
 		runner.Register(&collector.DummyCollector{
@@ -63,11 +58,11 @@ func NewDaemon(config *config.Config) *Daemon {
 		})*/
 
 	return &Daemon{
-		config:   config,
-		server:   srv,
-		registry: runner,
-		stopCh:   make(chan struct{}),
-		doneCh:   make(chan struct{}),
+		config:  config,
+		server:  srv,
+		manager: manager,
+		stopCh:  make(chan struct{}),
+		doneCh:  make(chan struct{}),
 	}
 }
 
@@ -107,14 +102,14 @@ func (d *Daemon) Run() error {
 	defer cancel()
 
 	// Start collector registry
-	d.registry.Start(ctx)
+	d.manager.Start(ctx)
 
 	if err := d.server.Run(d.stopCh); err != nil {
 		return err
 	}
 
 	// Stop collector registry
-	d.registry.Stop()
+	d.manager.Stop()
 
 	close(d.doneCh)
 	return nil

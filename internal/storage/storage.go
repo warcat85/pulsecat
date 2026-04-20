@@ -2,7 +2,8 @@ package storage
 
 import (
 	"context"
-	"runtime/metrics"
+	"log"
+	"pulsecat/internal/metrics"
 )
 
 type Storage interface {
@@ -15,7 +16,7 @@ type BufferedStorage struct {
 	buffer *RingBuffer[metrics.Sample]
 }
 
-func NewBufferedStore(capacity int) *BufferedStorage {
+func NewBufferedStorage(capacity int) *BufferedStorage {
 	return &BufferedStorage{
 		buffer: NewRingBuffer[metrics.Sample](capacity),
 	}
@@ -30,10 +31,14 @@ func (c *BufferedStorage) Buffer() *RingBuffer[metrics.Sample] {
 	return c.buffer
 }
 
-type DummyStorage struct {
-	Storage
+// DummyStorage prints every sample it receives to stdout.
+type DummyStorage struct{}
+
+func NewDummyStorage() *DummyStorage {
+	return &DummyStorage{}
 }
 
-func (c *DummyStorage) Store(ctx context.Context, sample metrics.Sample) error {
+func (d *DummyStorage) Store(ctx context.Context, sample metrics.Sample) error {
+	log.Printf("Dummy storage is storing: %+v\n", sample)
 	return nil
 }

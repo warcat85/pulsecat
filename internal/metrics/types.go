@@ -15,6 +15,7 @@ const (
 	TOP_TALKERS
 	LISTENING_SOCKETS
 	TCP_CONNECTION_STATES
+	MEOW
 )
 
 var metricNames = MetricMap[string]{
@@ -25,6 +26,7 @@ var metricNames = MetricMap[string]{
 	TOP_TALKERS:           "top_talkers",
 	LISTENING_SOCKETS:     "listening_sockets",
 	TCP_CONNECTION_STATES: "tcp_connection_states",
+	MEOW:                  "meow",
 }
 
 func (t MetricType) String() string {
@@ -34,7 +36,9 @@ func (t MetricType) String() string {
 	panic(fmt.Sprintf("unknown metric type: %d", t))
 }
 
-type MetricMap[T any] map[MetricType]T
+type (
+	MetricMap[T any] map[MetricType]T
+)
 
 // a single metric snapshot with its timestamp.
 type Sample struct {

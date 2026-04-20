@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"pulsecat/internal/app"
 	"pulsecat/internal/config"
+	"pulsecat/internal/version"
 	"syscall"
 )
 
@@ -14,7 +15,7 @@ func main() {
 	// Set up logging
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 	log.Printf("Starting PulseCat daemon v%s (build: %s, commit: %s)",
-		config.Version, config.BuildTime, config.CommitHash)
+		version.Version, version.BuildTime, version.CommitHash)
 
 	// Parse configuration (includes command-line flags and YAML file)
 	cfg, err := config.LoadConfig()

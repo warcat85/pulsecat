@@ -13,13 +13,11 @@ type CpuUsage struct {
 	Idle   float64
 }
 
-// aplaceholder collector that returns simulated CPU usage data.
-type DummyCpuUsageCollector struct {
-	PeriodicCollector
-}
+// a placeholder collector that returns simulated CPU usage data.
+type DummyCpuUsageCollector struct{}
 
 // creates a new dummy CPU usage collector.
-func NewDummyCpuUsageCollector() *DummyCpuUsageCollector {
+func NewDummyCpuUsageCollector() Collector {
 	return &DummyCpuUsageCollector{}
 }
 
