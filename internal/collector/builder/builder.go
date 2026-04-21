@@ -8,8 +8,8 @@ import (
 )
 
 var collectorBuilders = metrics.MetricMap[func() collector.Collector]{
-	metrics.LoadAverage:         collector.NewDummyLoadAverageCollector,
-	metrics.CPUUsage:            collector.NewDummyCPUUsageCollector,
+	metrics.LoadAverage:         collector.NewLoadAverageCollector,
+	metrics.CPUUsage:            collector.NewCPUUsageCollector,
 	metrics.DiskUsage:           collector.NewDummyDiskUsageCollector,
 	metrics.NetworkStats:        collector.NewDummyNetworkStatsCollector,
 	metrics.TopTalkers:          collector.NewDummyTopTalkersCollector,

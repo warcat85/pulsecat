@@ -68,8 +68,8 @@ func printMetricPulse(pulse *v1.MetricPulse) {
 		fmt.Printf("Load Average: 1m=%.2f, 5m=%.2f, 15m=%.2f\n", la.OneMin, la.FiveMin, la.FifteenMin)
 	case *v1.MetricPulse_CpuUsage:
 		cpu := metric.CpuUsage
-		fmt.Printf("CPU Usage: User=%.1f%%, System=%.1f%%, Idle=%.1f%%, Nice=%.1f%%, IOWait=%.1f%%\n",
-			cpu.User, cpu.System, cpu.Idle, cpu.Nice, cpu.Iowait)
+		fmt.Printf("CPU Usage: User=%.2f%%, System=%.2f%%, Idle=%.2f%%\n",
+			cpu.User, cpu.System, cpu.Idle)
 	case *v1.MetricPulse_DiskUsage:
 		disks := metric.DiskUsage.Disks
 		fmt.Printf("Disk Usage (%d filesystems):\n", len(disks))

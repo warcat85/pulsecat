@@ -7,12 +7,11 @@
 package v1
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -593,6 +592,7 @@ type CPUUsage struct {
 	SoftIrq       float64                `protobuf:"fixed64,7,opt,name=soft_irq,json=softIrq,proto3" json:"soft_irq,omitempty"`
 	Steal         float64                `protobuf:"fixed64,8,opt,name=steal,proto3" json:"steal,omitempty"`
 	Guest         float64                `protobuf:"fixed64,9,opt,name=guest,proto3" json:"guest,omitempty"`
+	GuestNice     float64                `protobuf:"fixed64,10,opt,name=guest_nice,json=guestNice,proto3" json:"guest_nice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -686,6 +686,13 @@ func (x *CPUUsage) GetSteal() float64 {
 func (x *CPUUsage) GetGuest() float64 {
 	if x != nil {
 		return x.Guest
+	}
+	return 0
+}
+
+func (x *CPUUsage) GetGuestNice() float64 {
+	if x != nil {
+		return x.GuestNice
 	}
 	return 0
 }
@@ -1376,7 +1383,7 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\aone_min\x18\x01 \x01(\x01R\x06oneMin\x12\x19\n" +
 	"\bfive_min\x18\x02 \x01(\x01R\afiveMin\x12\x1f\n" +
 	"\vfifteen_min\x18\x03 \x01(\x01R\n" +
-	"fifteenMin\"\xcf\x01\n" +
+	"fifteenMin\"\xee\x01\n" +
 	"\bCPUUsage\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\x01R\x04user\x12\x16\n" +
 	"\x06system\x18\x02 \x01(\x01R\x06system\x12\x12\n" +
@@ -1386,7 +1393,10 @@ const file_api_v1_pulsecat_proto_rawDesc = "" +
 	"\x03irq\x18\x06 \x01(\x01R\x03irq\x12\x19\n" +
 	"\bsoft_irq\x18\a \x01(\x01R\asoftIrq\x12\x14\n" +
 	"\x05steal\x18\b \x01(\x01R\x05steal\x12\x14\n" +
-	"\x05guest\x18\t \x01(\x01R\x05guest\"\xba\x02\n" +
+	"\x05guest\x18\t \x01(\x01R\x05guest\x12\x1d\n" +
+	"\n" +
+	"guest_nice\x18\n" +
+	" \x01(\x01R\tguestNice\"\xba\x02\n" +
 	"\tDiskUsage\x12\x1e\n" +
 	"\n" +
 	"filesystem\x18\x01 \x01(\tR\n" +
@@ -1480,29 +1490,26 @@ func file_api_v1_pulsecat_proto_rawDescGZIP() []byte {
 	return file_api_v1_pulsecat_proto_rawDescData
 }
 
-var (
-	file_api_v1_pulsecat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_api_v1_pulsecat_proto_msgTypes  = make([]protoimpl.MessageInfo, 15)
-	file_api_v1_pulsecat_proto_goTypes   = []any{
-		(MetricType)(0),             // 0: pulsecat.v1.MetricType
-		(*SubscribeRequest)(nil),    // 1: pulsecat.v1.SubscribeRequest
-		(*MetricPulse)(nil),         // 2: pulsecat.v1.MetricPulse
-		(*Meow)(nil),                // 3: pulsecat.v1.Meow
-		(*DiskUsages)(nil),          // 4: pulsecat.v1.DiskUsages
-		(*NetworkTalkers)(nil),      // 5: pulsecat.v1.NetworkTalkers
-		(*ListeningSockets)(nil),    // 6: pulsecat.v1.ListeningSockets
-		(*LoadAverage)(nil),         // 7: pulsecat.v1.LoadAverage
-		(*CPUUsage)(nil),            // 8: pulsecat.v1.CPUUsage
-		(*DiskUsage)(nil),           // 9: pulsecat.v1.DiskUsage
-		(*NetworkStats)(nil),        // 10: pulsecat.v1.NetworkStats
-		(*NetworkTalker)(nil),       // 11: pulsecat.v1.NetworkTalker
-		(*ProtocolTalker)(nil),      // 12: pulsecat.v1.ProtocolTalker
-		(*ConnectionTalker)(nil),    // 13: pulsecat.v1.ConnectionTalker
-		(*ListeningSocket)(nil),     // 14: pulsecat.v1.ListeningSocket
-		(*TCPConnectionStates)(nil), // 15: pulsecat.v1.TCPConnectionStates
-	}
-)
-
+var file_api_v1_pulsecat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_api_v1_pulsecat_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_api_v1_pulsecat_proto_goTypes = []any{
+	(MetricType)(0),             // 0: pulsecat.v1.MetricType
+	(*SubscribeRequest)(nil),    // 1: pulsecat.v1.SubscribeRequest
+	(*MetricPulse)(nil),         // 2: pulsecat.v1.MetricPulse
+	(*Meow)(nil),                // 3: pulsecat.v1.Meow
+	(*DiskUsages)(nil),          // 4: pulsecat.v1.DiskUsages
+	(*NetworkTalkers)(nil),      // 5: pulsecat.v1.NetworkTalkers
+	(*ListeningSockets)(nil),    // 6: pulsecat.v1.ListeningSockets
+	(*LoadAverage)(nil),         // 7: pulsecat.v1.LoadAverage
+	(*CPUUsage)(nil),            // 8: pulsecat.v1.CPUUsage
+	(*DiskUsage)(nil),           // 9: pulsecat.v1.DiskUsage
+	(*NetworkStats)(nil),        // 10: pulsecat.v1.NetworkStats
+	(*NetworkTalker)(nil),       // 11: pulsecat.v1.NetworkTalker
+	(*ProtocolTalker)(nil),      // 12: pulsecat.v1.ProtocolTalker
+	(*ConnectionTalker)(nil),    // 13: pulsecat.v1.ConnectionTalker
+	(*ListeningSocket)(nil),     // 14: pulsecat.v1.ListeningSocket
+	(*TCPConnectionStates)(nil), // 15: pulsecat.v1.TCPConnectionStates
+}
 var file_api_v1_pulsecat_proto_depIdxs = []int32{
 	0,  // 0: pulsecat.v1.SubscribeRequest.metric_type:type_name -> pulsecat.v1.MetricType
 	3,  // 1: pulsecat.v1.MetricPulse.meow:type_name -> pulsecat.v1.Meow

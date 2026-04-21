@@ -13,7 +13,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./configs/config.yaml:/configs/config.yaml:ro
+      - ./configs/config2.yaml:/configs/config.yaml:ro
     # Environment variables can override config
     environment:
       - LOG_LEVEL=info

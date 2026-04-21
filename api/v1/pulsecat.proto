@@ -77,6 +77,7 @@ message CPUUsage {
   double soft_irq = 7;
   double steal = 8;
   double guest = 9;
+  double guest_nice = 10;
 }
 
 // DiskUsage represents disk usage for a filesystem

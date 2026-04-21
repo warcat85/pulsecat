@@ -212,10 +212,16 @@ func ConvertCPUUsage(in *collector.CPUUsage) *v1.CPUUsage {
 		return nil
 	}
 	return &v1.CPUUsage{
-		User:   in.User,
-		System: in.System,
-		Idle:   in.Idle,
-		// Nice, Iowait, Irq, SoftIrq, Steal, Guest are left as zero (default)
+		User:      in.User,
+		System:    in.System,
+		Idle:      in.Idle,
+		Nice:      in.Nice,
+		Iowait:    in.Iowait,
+		Irq:       in.Irq,
+		SoftIrq:   in.SoftIrq,
+		Steal:     in.Steal,
+		Guest:     in.Guest,
+		GuestNice: in.GuestNice,
 	}
 }
 
